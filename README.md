@@ -11,19 +11,6 @@ ship with it, transcribed from the same document.
 ![Rhythm page](docs/img/device-ui3.png)
 ![Main page](docs/img/device-ui4.png)
 
-## What it is checked against
-
-Page 30 of the service notes is Roland's factory alignment procedure: for
-every voice, the frequency and decay time the machine is trimmed to. The
-voices here are built from the schematics on pages 25–26; the table was
-measured off hardware by the people who built it. The two were arrived at
-independently, so agreement means something — and `./test/all.sh` will not
-pass unless every lane lands on it.
-
-The cleanest case: the rim shot is a 700 mH coil (part 022-033) across
-16.5 nF, which computes to **1481 Hz** — and the factory table says **1480**.
-Nothing was fitted to make that happen.
-
 ## Voices
 
 | Voice | Engine |
@@ -38,21 +25,6 @@ Nothing was fitted to make that happen.
 | Tambourine | Noise and a strike into the L5/C538 tank. L5's inductance is not in the parts list and is solved, not derived — measure a real one and exactly one number changes |
 | Guiro | A cross-coupled **astable multivibrator** at the hardware's own 77–125 Hz. Those are not pitches — they are the **scrape rate**, the teeth — and each edge kicks a 6126 Hz tank. **Rate** walks between the two settings |
 | Metallic Beat | Three RC relaxation oscillators on IC501 at 6170 / 5620 / 4080 Hz. **The bank free-runs** — the hardware has no way to reset it — so no two hits are quite alike |
-
-There is **one noise source** for the whole machine — Q533, the transistor the
-parts list calls out "for noise" — bussed to the hi-hat, cymbal, maracas,
-tambourine and the snare's snap, so those lanes are **correlated** exactly as
-the hardware has them. And all fourteen share one trigger front end: 0.027 µF,
-270 k, a steering diode.
-
-**Nothing was invented to fill the pad block.** A CR-78 has one hi-hat, two
-bongos and one conga; the two spare pads are Main and the FX pages, not
-made-up drums.
-
-Every voice has **Tune, Decay, Drive, a Distortion type, Level** and — every
-one except the kick — a pair of **send amounts (Rev, Dly)**. Every continuous
-control is a **0–127 pot**, like the hardware — no Hz, no ms. The defaults are
-page 30's figures, so a fresh patch is a correctly aligned CR-78.
 
 **Seven distortion characters**, per voice and again on the master bus — the
 same seven 9W9, 6W6 and 8W8 offer, so the knob means the same thing on all
@@ -86,17 +58,6 @@ Three controls on the **Rhythm** page:
 | **A / B** | The RHYTHM lever, live on all seventeen buttons — which is where Roland's **"34 preset rhythms"** figure comes from: 17 × 2. On single-label caps it picks the style's A or B variation; on the three dual caps it picks which style plays |
 | **Style** | Which **button** — seventeen, exactly the seventeen on the panel: Waltz, Shuffle, Slow Rock, Swing, A-Fox Trot/B-Tango, Boogie, Enka, Bossa Nova, Samba, A-Mambo/B-Cha Cha, A-Beguine/B-Rhumba, Rock 1–4, Disco 1–2 |
 
-**Accent is a real channel**: the `(>)` marks in the score are per-step accent
-pulses — on the hardware one control voltage into the BA662 VCA — and an
-accented step plays at full velocity. The ADD VOICE lanes (tambourine, guiro,
-metallic beat) appear in no preset, because they appear in none of the
-notation: on the hardware they are mixed in by sliders, and playing one is
-still up to you.
-
-The transcriptions are a careful visual reading of a 1979 scan, not verified
-against hardware; anything wrong is wrong by a note, not by a pattern, and
-`tools/rhythm_check` renders all twenty to WAVs for checking by ear.
-
 ## Send FX
 
 Two buses, fed post-fader from every voice by its **Rev** and **Dly** knobs
@@ -125,22 +86,6 @@ downwards. It reaches the voices the way the circuit would take it — as
 trigger voltage into each lane's front-end diode, with the VCA carrying the
 range below the voltage's floor — so a harder hit is a slightly different
 sound and not only a louder one.
-
-## Mods
-
-Two things a CR-78 does not do, listed here and marked `MOD` at their site in
-the source. Both default to the machine's behaviour, and `tools/golden_check`
-holds a fresh patch bit-identical to the unmodified kit.
-
-- **Decay range on Maracas and Tambourine.** The machine has one hi-hat, so
-  those two are what you reach for as a second and a third — but their ranges
-  were drawn tight around the factory decays. All three noise lanes now span
-  the same ground (MA 5 ms–600 ms, TB 13 ms–1.5 s, HH untouched). The factory
-  defaults moved by less than a third of one pot step.
-- **A hat choke group** on Main — Off / MA-TB / All3. Off is the default and
-  is inert. A 2 ms fade and an envelope dump, never a hard cut; a lane never
-  chokes itself on a retrigger. The hardware chokes nothing — this is an
-  addition, not a correction.
 
 ## Workflow on the Move
 

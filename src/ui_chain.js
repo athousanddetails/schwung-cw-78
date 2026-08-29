@@ -202,7 +202,7 @@ import { LAYOUT_MOVY } from '/data/UserData/schwung/shared/param_pages/render_pa
         if (levelKey === "root") controller.goToPage(0);
     }
 
-    /* Give the pad back to Move as a real press: plays the (HiJack-muted) kit,
+    /* Give the pad back to Move as a real press: plays the Move-side kit,
      * records while REC is on, and updates Move's pad selection. */
     function injectToMove(data) {
         if (!has("move_midi_inject_to_move")) return;

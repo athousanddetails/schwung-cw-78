@@ -1,0 +1,888 @@
+<!doctype html>
+<!--
+  CW-78 remote panel — served by schwung-manager at /remote-ui when CW-78 is the
+  slot's synth. Talks to the device through the schwungRemote postMessage
+  bridge; every continuous control is a 0-127 pot, mirroring the hardware.
+
+  LAID OUT AFTER THE REAL CR-78 — but with one thing said plainly up front.
+
+  A CR-78's panel has no per-voice controls at all. It has Volume and Balance
+  sliders, four ADD VOICE sliders, Accent, Tempo, and the rhythm buttons.
+  Tune and Decay live on trimmers INSIDE the machine — VR51 through VR68 on
+  the VG-11A, the ones page 30's alignment procedure tells a service engineer
+  to adjust. So the upper rack here is not a photograph of a CR-78 front
+  panel; it is those internal trimmers brought out where you can reach them.
+  That is the honest description and this file is not going to pretend
+  otherwise.
+
+  What IS from the machine:
+
+    - the six MUTE button colours are the CR-78's own button parts, straight
+      off the parts list on page 31: 016-008 gray, 016-085 white, 016-086
+      red, 016-087 green, 016-088 yellow, 016-089 blue
+    - a dark case with a cream panel and wood cheeks, not 808 orange
+    - the name plates use Roland's own lettering: the first two letters of
+      each word large, the rest small — VElocity, BAss DRum, MEtallic BEat
+    - the ADD VOICE lanes (Tambourine, Guiro, Metallic Beat, Cowbell) are
+      grouped as the hardware groups them, because on a CR-78 they are a
+      separate section with their own sliders
+    - "CompuRhythm CR-78 / Computer Controlled" bottom right, with MASTER
+      VOLUME beyond it in the corner
+
+  Two departures, both deliberate:
+
+  - No step sequencer. CW-78's step lanes are driven by Move's own step buttons
+    through the chain patch, and a second editor here would double-hit
+    anything also programmed on Move. The bottom button row stays — as the
+    MUTE row, which is what a player actually reaches for mid-pattern.
+
+  - Drive and a Distortion type per lane, which no CR-78 ever had. Those go in
+    the lower deck, in the same columns, so the upper rack stays the
+    instrument surface.
+
+  GPL-3.0.
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CW-78</title>
+<style>
+  :root {
+    /*
+     * Off a CR-78, and it looks nothing like an 808. The case is WALNUT, the
+     * panel is near-black rather than the warm grey a TR machine has, the
+     * knobs are BLACK with a white pointer (not orange caps), the sliders and
+     * name plates are cream, and orange is reserved for section headings and
+     * the CompuRhythm logotype.
+     */
+    --wood-a:  #8a5a30;          /* the cabinet's walnut cheeks             */
+    --wood-b:  #633d1f;
+    --case:    #17181a;
+    --panel-a: #2a2b2e;          /* near-black panel, faint warm cast       */
+    --panel-b: #202124;
+    --rule:    #6e6c66;          /* the thin separators between instruments */
+    --rule-hi: #9a968b;          /* the heavier section rules               */
+    --legend:  #e9e7e1;
+    --plate:   #d9d4c5;          /* instrument name plate, cream            */
+    --plate-2: #d1832c;          /* the ADD VOICE group, orange             */
+    --orange:  #e07a2f;          /* "CompuRhythm", section headings          */
+    --knob:    #191a1c;          /* BLACK knob caps, as the machine has     */
+    --knob-hi: #35373b;
+    --led:     #e03a28;
+
+    /*
+     * The rhythm buttons, and these are the machine's own colours — the
+     * bottom of a CR-78 panel is gray / cream / green / blue / amber / red,
+     * and that grouping IS the taxonomy: cream is ballroom, green is latin,
+     * blue is rock, amber is disco, red is cancel.
+     */
+    --btn-gray:  #9d9a93;
+    --btn-cream: #ded9cb;
+    --btn-green: #3f8f5c;
+    --btn-blue:  #3d6aa8;
+    --btn-amber: #d5952c;
+    --btn-red:   #c4332b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0f1013; padding: 16px;
+         font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+         color: var(--legend); }
+
+  /* Walnut cheeks down both sides, which is the first thing you see on a
+     CR-78 and the thing that most stops it reading as a TR box. */
+  .machine { max-width: 1240px; margin: 0 auto;
+             background: linear-gradient(90deg,
+                 var(--wood-a) 0 13px, var(--wood-b) 13px 20px,
+                 var(--case) 20px calc(100% - 20px),
+                 var(--wood-b) calc(100% - 20px) calc(100% - 13px),
+                 var(--wood-a) calc(100% - 13px) 100%);
+             border: 1px solid #0a0b0e; border-radius: 5px;
+             padding: 11px 24px;
+             box-shadow: 0 1px 0 #ffffff14 inset, 0 14px 44px #000a; }
+
+  /* The top padding is the logo's band. On the hardware "Roland" sits above
+   * the LEVEL row with clear panel around it; without the room it lands on
+   * top of the last instrument's knob. */
+  .panel { background: linear-gradient(180deg, var(--panel-a), var(--panel-b));
+           border: 1px solid #2a2b2e; border-radius: 2px;
+           padding: 30px 12px 10px; position: relative; }
+
+  /* Roland's logo sits top right; ours takes its place. */
+  .logo { position: absolute; top: 4px; right: 14px;
+          font-size: 25px; font-weight: 800; letter-spacing: 2px; color: #fff;
+          text-shadow: 0 1px 1px #0007; }
+
+  /* ---- instrument columns ---- */
+  .rack { display: flex; align-items: stretch; }
+  /* ONE column grid for both decks. They are stacked and read as columns of
+     the same machine, so a drum's Drive has to sit under its Decay — and the
+     lower deck's 56px <select> was quietly pushing its columns to 60px
+     against the upper deck's 58px, so the two rows drifted apart by two
+     pixels per instrument and the row overflowed its panel. flex-basis
+     rather than width: the columns must not grow or shrink to fill. */
+  .col { display: flex; flex-direction: column; align-items: center;
+         flex: 0 0 58px; width: 58px; padding: 0 2px; box-sizing: border-box; }
+  .col.narrow { flex: 0 0 51px; width: 51px; }
+  .col.sel .plate:last-child { box-shadow: 0 0 0 2px var(--led); }
+
+  /* The rules. Every instrument is fenced off from its neighbour; the
+   * sections get a brighter, heavier one. */
+  .rule  { width: 1px; background: var(--rule); opacity: .5;
+           margin: 16px 0 26px; align-self: stretch; }
+  .rule.section { width: 2px; background: var(--rule-hi); opacity: .75;
+                  margin: 4px 7px 20px; }
+
+  .lbl { font-size: 7px; letter-spacing: 1.3px; text-transform: uppercase;
+         white-space: nowrap; margin-bottom: 3px; color: var(--legend); }
+  .knobwrap { display: flex; flex-direction: column; align-items: center; }
+  /* Every slot is one height, filled or empty, so the rows line up exactly.
+   * Guessing the empty one's height left it a pixel short and dropped a whole
+   * DECAY row 2 px out of true — invisible in a screenshot, obvious on a
+   * panel. Scoped to #rack: the deck has selects and nothing to align to. */
+  #rack .knobwrap { height: 56px; }
+  #rack .knobwrap.tall { height: 74px; }
+
+  /* BLACK cap, white pointer, faint chrome skirt — the CR-78's knob. The
+     hardware's TEMPO and ACCENT knobs are black; nothing on the panel is an
+     orange cap, which is an 808 thing. */
+  .knob { position: relative; width: 30px; height: 30px; border-radius: 50%;
+          background: radial-gradient(circle at 50% 30%,
+                      var(--knob-hi) 0 38%, var(--knob) 39% 78%, #0d0e10 79% 100%);
+          border: 1px solid #0a0b0d; cursor: ns-resize; touch-action: none;
+          box-shadow: 0 1px 2px #000b, 0 0 0 2px #4a4844; }
+  .knob.big { width: 44px; height: 44px; }
+  .knob .ptr { position: absolute; left: 50%; top: 50%; width: 2px; height: 13px;
+               background: #fffdf8; transform-origin: 50% 0%; border-radius: 1px;
+               box-shadow: 0 0 1px #0006; }
+  .knob.big .ptr { height: 19px; }
+  .val { font-size: 7.5px; color: #d8d5cd; height: 10px; margin-top: 2px;
+         opacity: .75; }
+
+  /* ---- the name plates ---- */
+  .plates { margin-top: auto; width: 100%; padding-top: 6px; }
+  .plate { display: block; background: var(--plate); color: #17171a;
+           text-align: center; padding: 3px 1px 2px; border-radius: 1px;
+           border: 1px solid #00000040; white-space: nowrap;
+           font-size: 6.5px; letter-spacing: .2px; line-height: 1; }
+  /* Roland's lettering: the first two letters of each word set larger. */
+  .plate b { font-size: 8.5px; font-weight: 700; }
+  .plate.alt { background: var(--plate-2); color: #1a1005; }
+  /* Only an alternate STACKED ABOVE another plate gets the gap. The congas
+   * and the maracas wear the orange plate in the bottom row themselves, and
+   * giving them the same margin lifted them 3 px off the baseline every other
+   * instrument sits on. */
+  .plates .plate.alt:not(:last-child) { margin-bottom: 3px; }
+  .plate.empty { background: none; border: 0; }
+
+  /* ---- the branding strip, bottom right, MASTER VOLUME beyond it ---- */
+  .footstrip { display: flex; align-items: flex-end; justify-content: flex-end;
+               gap: 18px; margin-top: 8px; }
+  .model { color: var(--orange); font-size: 23px; font-weight: 500;
+           letter-spacing: .3px; line-height: 1; text-align: right; }
+  .model small { display: block; font-size: 9px; letter-spacing: 2.2px;
+                 color: #ded9cf; font-weight: 400; margin-top: 4px; }
+  .master { display: flex; flex-direction: column; align-items: center; }
+  .master .lbl { margin: 3px 0 0; font-size: 6.5px; }
+
+  /* ---- the lower deck ---- */
+  .deck { background: linear-gradient(180deg, #35373d, #2a2c31);
+          border: 1px solid #14161a; border-radius: 2px;
+          margin-top: 9px; padding: 8px 12px 10px; }
+  .deck .hdr { display: flex; justify-content: space-between; align-items: baseline;
+               font-size: 7.5px; letter-spacing: 2px; color: #b9b6ae;
+               margin-bottom: 7px; }
+  /* 54px is the column's whole content box (58 less 2px padding a side), and
+     the longest options — "CH>OH", "Rack 36" — need every pixel of it plus a
+     slightly tighter face. At 50px they truncated to "CH>OI" and "Rack 3",
+     which is worse than an unaligned column. */
+  .deck select { width: 54px; height: 18px; border: 1px solid #111; border-radius: 2px;
+                 padding: 0 1px; box-sizing: border-box;
+                 background: #d9d6cd; color: #17171a; font-weight: 700;
+                 font-size: 8.5px; letter-spacing: -.2px; }
+  .deck .knobwrap { margin-bottom: 6px; }
+  .deck .rule { opacity: .28; margin: 8px 0; }
+  .deck .rule.section { opacity: .5; margin: 4px 7px; }
+  /* The send buses sit on their own row: two short columns, left-aligned
+     under the lanes rather than stretched across sixteen slots' worth of
+     width, with a hairline above to separate them from the drive deck. */
+  .deck .hdr.buses { margin-top: 14px; padding-top: 10px;
+                     border-top: 1px solid rgba(255,255,255,.10); }
+  /* Three sections, not three leftovers: they share the machine's full
+     width and are fenced from each other by the same rules the lanes use,
+     so the row reads as part of the same rack instead of a strip hugging
+     the left edge with a void beside it. */
+  /* A bus is a console SECTION, not a lane: its handful of controls sit in
+     a row across the section the way they would on a desk, rather than in a
+     single tall file down the middle of a wide empty column. */
+  #buses .col { flex: 1 1 0; width: auto;
+                flex-flow: row wrap; justify-content: center;
+                align-content: flex-start; gap: 4px 16px; padding-top: 2px; }
+  #buses .knobwrap { flex: 0 0 auto; margin-bottom: 0; }
+  /* The sections are wide, but a nameplate is a nameplate: keep it the size
+     of the ones upstairs instead of letting it stretch into a cream bar. */
+  /* flex-basis 100% gives the plate its own line; the plate INSIDE is what
+     gets the rack's width, or it stretches into a cream bar again. */
+  #buses .plates { flex: 0 0 100%; width: 100%; margin: 14px 0 0;
+                   padding-top: 0; }
+  #buses .plates .plate { width: 84px; margin: 0 auto; }
+
+  /* The button row. On the hardware these are the sixteen steps, in four
+   * groups of four running red to cream; here they mute. */
+  /* ---- the rhythm deck: the CR-78's own bottom panel ---- */
+  .rhythm { margin-top: 12px; background: linear-gradient(180deg,
+              var(--panel-a), var(--panel-b));
+            border: 1px solid #2a2b2e; border-radius: 2px; padding: 9px 10px; }
+  .rhythm .rhdr { font-size: 8px; letter-spacing: 1.6px; text-transform: uppercase;
+                  color: var(--orange); margin-bottom: 7px;
+                  display: flex; justify-content: space-between; }
+  .rhythm .rhdr em { font-style: normal; color: #98958d; letter-spacing: 1px; }
+  .rhrow { display: flex; align-items: flex-end; gap: 14px; margin-bottom: 8px; }
+  .rhgrp { display: flex; flex-direction: column; }
+  .rhgrp .cap { font-size: 7px; letter-spacing: 1.4px; color: var(--orange);
+                text-transform: uppercase; margin-bottom: 3px; text-align: center;
+                border-top: 1px solid var(--orange); padding-top: 2px; }
+  .rhbtns { display: flex; gap: 4px; }
+
+  /* The buttons themselves. Latching, like the hardware's — the selected one
+     stays down — so the pressed state is a real state and not a hover. */
+  .rbtn { position: relative; min-width: 62px; padding: 6px 4px 5px;
+          border: 1px solid #101113; border-radius: 2px; cursor: pointer;
+          font-size: 6.6px; font-weight: 700; letter-spacing: .5px;
+          line-height: 1.35; text-align: center; color: #23241f;
+          text-transform: uppercase; user-select: none;
+          box-shadow: 0 2px 0 #0b0c0e, 0 3px 5px #0007; }
+  .rbtn:hover  { filter: brightness(1.08); }
+  /* Latched. The hardware's buttons stay down, so this is a pressed state and
+     not a hover: the cap drops, loses its relief, and takes a red ring. The
+     ring is on the OUTSIDE — inset on a cream cap was almost invisible. */
+  .rbtn.on     { transform: translateY(2px);
+                 box-shadow: 0 0 0 2px var(--led), 0 0 8px #e03a2855,
+                             0 1px 3px #0009; }
+  .rbtn.gray   { background: var(--btn-gray); }
+  .rbtn.cream  { background: var(--btn-cream); }
+  .rbtn.green  { background: var(--btn-green); color: #f2f4ef; }
+  .rbtn.blue   { background: var(--btn-blue);  color: #f2f4ef; }
+  .rbtn.amber  { background: var(--btn-amber); }
+  .rbtn.red    { background: var(--btn-red);   color: #fdf1ef; }
+  .rbtn small  { display: block; font-size: 6px; opacity: .8; font-weight: 600; }
+
+  /* The RHYTHM A/B lever, bottom right of the panel. */
+  /* The RHYTHM A/B lever. Bigger than scale, deliberately: it is the one
+     control on this deck that is not a button, it changes what three of the
+     caps mean, and at true panel scale it read as a smudge. */
+  .lever { margin-left: auto; display: flex; flex-direction: column;
+           align-items: center; gap: 4px; padding-left: 14px; }
+  .lever .lname { font-size: 7.5px; letter-spacing: 1.6px; color: var(--orange);
+                  text-transform: uppercase; border-top: 1px solid var(--orange);
+                  padding-top: 2px; }
+  .lever .body  { display: flex; align-items: center; gap: 6px; }
+  .lever .track { position: relative; width: 26px; height: 50px; cursor: pointer;
+                  background: linear-gradient(180deg, #101113, #08090a);
+                  border: 1px solid #000; border-radius: 3px;
+                  box-shadow: 0 1px 0 #ffffff10 inset; }
+  .lever .bat   { position: absolute; left: 4px; width: 17px; height: 21px;
+                  border-radius: 2px;
+                  background: linear-gradient(180deg,#f4f0e4,#c6c1b1);
+                  box-shadow: 0 2px 3px #000c; transition: top .09s ease; }
+  .lever.a .bat { top: 4px; }
+  .lever.b .bat { top: 24px; }
+  .lever .ticks { display: flex; flex-direction: column; justify-content: space-between;
+                  height: 50px; font-size: 11px; font-weight: 800;
+                  color: #6f6c65; line-height: 1; }
+  .lever.a .ticks span:first-child { color: var(--legend); }
+  .lever.b .ticks span:last-child  { color: var(--legend); }
+  .lever.off    { opacity: .40; }
+
+  /* The mute row. Deliberately FLATTER than the rhythm caps below it: both
+     are rows of coloured rectangles, and without a difference in relief the
+     eye reads them as one control surface and cannot tell which row is the
+     machine's own panel. These are tabs; those are buttons. */
+  .steps { display: flex; gap: 4px; margin-top: 10px; }
+  .step { flex: 1; border: 1px solid #101216; border-radius: 1px;
+          box-shadow: none; opacity: .92;
+          padding: 5px 2px 4px; cursor: pointer; text-align: center;
+          font: 700 8px/1.1 Helvetica, Arial; color: #17171a; }
+  .step .n { display: block; font-size: 6.5px; font-weight: 400; opacity: .5;
+             margin-bottom: 2px; }
+  .step.muted { filter: brightness(.4) saturate(.45); color: #ffffffbb; }
+  .step .led { display: block; width: 5px; height: 5px; border-radius: 50%;
+               margin: 3px auto 0; background: #521812; }
+  .step.sel .led { background: var(--led); box-shadow: 0 0 5px var(--led); }
+
+  .foot { font-size: 7.5px; color: #6f737c; text-align: right; margin-top: 8px;
+          letter-spacing: .3px; }
+</style>
+</head>
+<body>
+<div class="machine">
+
+  <div class="panel">
+    <div class="logo">CW-78</div>
+    <div class="rack" id="rack"></div>
+    <div class="footstrip">
+      <div class="model">CompuRhythm&nbsp;&nbsp;CW-78
+        <small>COMPUTER CONTROLLED</small></div>
+      <div class="master" id="master"></div>
+    </div>
+  </div>
+
+  <div class="deck">
+    <div class="hdr">
+      <span>DRIVE &amp; DISTORTION &mdash; CW-78's own; no CR-78 had these</span>
+      <span id="lane-name">BASS DRUM</span>
+    </div>
+    <div class="rack" id="fx"></div>
+    <div class="hdr buses">
+      <span>SEND FX &amp; MASTER &mdash; every drum but the kick feeds the buses</span>
+    </div>
+    <div class="rack" id="buses"></div>
+    <div class="steps" id="steps"></div>
+    <div class="rhythm" id="rhythm"></div>
+    <div class="foot">
+      by athousanddetails &middot; every voice modelled from the Roland CR-78
+      service notes, June 1979 &middot; preset rhythms read off pages 27-28
+      &middot; drag knobs vertically, double-click to reset &middot;
+      buttons mute
+    </div>
+  </div>
+</div>
+
+<script src="/static/schwung-remote-api.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  /* Degrade instead of dying if the bridge script is missing (headless
+   * screenshot, or schwung-manager not serving /static): every control still
+   * draws, nothing is sent anywhere. */
+  if (!window.schwungRemote) {
+    var noop = function () { return { then: function () {} }; };
+    window.schwungRemote = { getParam: noop, setParam: function () {},
+                             onParamChange: function () {} };
+  }
+
+  var DIST   = ["Diode", "Clip", "SAT", "BFZ", "PDIST", "Fold", "Crush"];
+  var MDIST  = ["Off"].concat(DIST);
+  /* No CHOKE list: a CR-78 has ONE hi-hat, not an open/closed pair, so
+     there is nothing to choke and the module ships no hh_choke enum. */
+  /*
+   * THE SEVENTEEN BUTTONS on the bottom of a CR-78, in panel order, with the
+   * cap colours the machine actually uses. Index must match g_cr78_buttons in
+   * cr78_rhythms.h and RHY_STYLES in gen_params.py — three lists, one order,
+   * and the only thing that catches a mismatch is tools/rhythm_check.
+   *
+   * `dual` marks the three buttons that carry TWO rhythms, printed on the cap
+   * as "A-FOX TROT / B-TANGO" and so on. The RHYTHM A/B lever picks between
+   * them and does nothing on the other fourteen, exactly as on the hardware —
+   * which is why the lever greys out when a single-rhythm button is selected.
+   */
+  var RHY_BTN = [
+    { t: ["WALTZ"],                  c: "gray"  },
+    { t: ["SHUFFLE"],                c: "cream" },
+    { t: ["SLOW ROCK"],              c: "cream" },
+    { t: ["SWING"],                  c: "cream" },
+    { t: ["A-FOX TROT", "B-TANGO"],  c: "cream", dual: 1 },
+    { t: ["BOOGIE"],                 c: "cream" },
+    { t: ["ENKA"],                   c: "cream" },
+    { t: ["BOSSA NOVA"],             c: "green" },
+    { t: ["SAMBA"],                  c: "green" },
+    { t: ["A-MAMBO", "B-CHA CHA"],   c: "green", dual: 1 },
+    { t: ["A-BEGUINE", "B-RHUMBA"],  c: "green", dual: 1 },
+    { t: ["ROCK-1"],                 c: "blue"  },
+    { t: ["ROCK-2"],                 c: "blue"  },
+    { t: ["ROCK-3"],                 c: "blue"  },
+    { t: ["ROCK-4"],                 c: "blue"  },
+    { t: ["DISCO-1"],                c: "amber" },
+    { t: ["DISCO-2"],                c: "amber" }
+  ];
+
+  var DIVS   = ["1/32", "1/16T", "1/16", "1/8T", "1/16.", "1/8", "1/4T",
+                "1/8.", "1/4", "1/2T", "1/4.", "1/2", "1/2."];
+  /* Lanes with NO sends. The kick is dry by design — reverb and delay on a
+     CR-78 kick is mud, and the low end is what the send highpass exists to
+     keep out of the wet path. Named here rather than inlined so the editor test
+     can read the exception instead of guessing at it. */
+  var DRY_LANES = ["bd"];
+
+  /*
+   * The instrument columns, IN THE DSP'S LANE ORDER — which is also the pad
+   * order and the mute-bit order, so this array's index is load-bearing.
+   *
+   *   knobs  fixed slots [Tune, extra, extra, Decay], null for an empty one.
+   *          On the real panel the knobs line up in rows across the whole
+   *          rack; a per-column list packs them upwards and it stops looking
+   *          like the machine immediately.
+   *   alt    marks the four ADD VOICE lanes, which wear the blue plate.
+   *   isAlt  this lane IS one of those alternates, so it wears the orange
+   *          plate itself — the congas and the maracas.
+   *   fx     what goes in the lower deck under this column, beyond the Drive
+   *          knob and Distortion select every lane gets.
+   *   col    the mute button's colour. The six on the ADD VOICE and drum
+   *          groups are the CR-78's own button parts from page 31's list:
+   *          gray, white, red, green, yellow, blue.
+   */
+  var LANES = [
+    { id:"bd", name:"BASS DRUM",  col:"#8a8f94",
+      knobs:[["bd_tune","Tuning"],null,null,["bd_decay","Decay"]] },
+    { id:"sd", name:"SNARE DRUM", col:"#9aa0a6",
+      knobs:[["sd_tune","Tuning"],["sd_snappy","Snappy"],null,["sd_decay","Decay"]] },
+    { id:"rs", name:"RIM SHOT",   col:"#c8322c",
+      knobs:[["rs_tune","Tuning"],null,null,["rs_decay","Decay"]] },
+    { id:"hh", name:"HI HAT",     col:"#e9e6dd",
+      knobs:[["hh_tune","Tuning"],null,null,["hh_decay","Decay"]] },
+    { id:"cy", name:"CYMBAL",     col:"#efe9c8",
+      knobs:[["cy_tune","Tuning"],null,null,["cy_decay","Decay"]] },
+    { id:"ma", name:"MARACAS",    col:"#e3c73f",
+      knobs:[["ma_tune","Tuning"],null,null,["ma_decay","Decay"]] },
+    { id:"cl", name:"CLAVES",     col:"#e3c73f",
+      knobs:[["cl_tune","Tuning"],null,null,["cl_decay","Decay"]] },
+    { id:"hb", name:"HI BONGO",   col:"#3f8f4e",
+      knobs:[["hb_tune","Tuning"],null,null,["hb_decay","Decay"]] },
+    { id:"lb", name:"LOW BONGO",  col:"#3f8f4e",
+      knobs:[["lb_tune","Tuning"],null,null,["lb_decay","Decay"]] },
+    { id:"lc", name:"LOW CONGA",  col:"#3f8f4e",
+      knobs:[["lc_tune","Tuning"],null,null,["lc_decay","Decay"]] },
+    /* The four ADD VOICE lanes. On the hardware these are a separate section
+       with their own sliders on OP-103, which is why they wear the blue
+       button and sit together on the panel row below. */
+    { id:"cb", name:"COW BELL",   col:"#3a63a8", isAlt:true,
+      knobs:[["cb_tune","Tuning"],null,null,["cb_decay","Decay"]] },
+    { id:"tb", name:"TAMBOURINE", col:"#3a63a8", isAlt:true,
+      knobs:[["tb_tune","Tuning"],null,null,["tb_decay","Decay"]] },
+    { id:"gu", name:"GUIRO",      col:"#3a63a8", isAlt:true,
+      knobs:[["gu_tune","Tuning"],["gu_rate","Rate"],null,["gu_decay","Decay"]] },
+    { id:"mb", name:"METALLIC BEAT", col:"#3a63a8", isAlt:true,
+      knobs:[["mb_tune","Tuning"],null,null,["mb_decay","Decay"]] }
+  ];
+
+  /*
+   * The order the panel DRAWS them in, which is not the order the DSP keeps
+   * them in. The drums group with the drums and the four ADD VOICE lanes sit
+   * together at the end, as the hardware has them; CW-78's lane enum is the PAD
+   * order, read bottom-left to top-right, which interleaves them.
+   *
+   * Reordering LANES itself to match the panel is the obvious shortcut and it
+   * is a real bug: LANES' index is the mute bit, so the cymbal's button would
+   * have muted the hi-hat, silently. 8W8 shipped that bug once and its
+   * editor test is what caught it.
+   */
+  var PANEL = ["bd","sd","lc","lb","hb","rs","cl","ma","hh","cy",
+               "cb","tb","gu","mb"];
+  function panelLanes() {
+    return PANEL.map(function (id) {
+      for (var i = 0; i < LANES.length; i++)
+        if (LANES[i].id === id) return { L: LANES[i], index: i };
+      return null;
+    }).filter(Boolean);
+  }
+
+  /* Fourteen lanes, fourteen bits. A byte would silently drop the whole ADD
+   * VOICE group from every mute. */
+  var LANE_MASK = 0x3FFF;
+
+  var state = {}, widgets = {}, mutesMask = 0, lane = 0;
+  function key(k) { return "synth:" + k; }
+  function addWidget(k, fn) { (widgets[k] = widgets[k] || []).push(fn); }
+  function send(k, v) {
+    state[k] = v; schwungRemote.setParam(key(k), String(v));
+    (widgets[k] || []).forEach(function (fn) { fn(v); });
+  }
+  function apply(k, raw) {
+    if (k === "ui_focus") {
+      var ln = parseInt(raw, 10);            /* 0-15 lane, 16 = master */
+      if (ln >= 0 && ln < LANES.length && ln !== lane) selectLane(ln);
+      return;
+    }
+    var v = parseInt(raw, 10); if (isNaN(v)) return;
+    if (k === "mutes") { mutesMask = v; renderMutes(); return; }
+    if (widgets[k]) { state[k] = v; widgets[k].forEach(function (fn) { fn(v); }); }
+  }
+
+  /* ---- widgets ---- */
+  function knob(parent, k, label, big) {
+    var wrap = document.createElement("div");
+    wrap.className = "knobwrap" + (big ? " tall" : "");
+    var lg = document.createElement("div"); lg.className = "lbl";
+    lg.textContent = label; lg.style.visibility = label ? "" : "hidden";
+    var kn = document.createElement("div"); kn.className = "knob" + (big ? " big" : "");
+    var ptr = document.createElement("div"); ptr.className = "ptr";
+    kn.appendChild(ptr);
+    var val = document.createElement("div"); val.className = "val";
+    function render(v) {
+      ptr.style.transform = "translate(-50%,0) rotate(" + (-135 + v / 127 * 270 + 180) + "deg)";
+      val.textContent = v;
+    }
+    addWidget(k, render);
+    var y0 = null, v0 = 0;
+    function move(e) {
+      if (y0 === null) return;
+      var y = e.touches ? e.touches[0].clientY : e.clientY;
+      var v = Math.max(0, Math.min(127, Math.round(v0 + (y0 - y) * 0.7)));
+      if (v !== state[k]) send(k, v);
+      e.preventDefault();
+    }
+    function up() { y0 = null;
+      window.removeEventListener("mousemove", move); window.removeEventListener("mouseup", up);
+      window.removeEventListener("touchmove", move); window.removeEventListener("touchend", up); }
+    function down(e) {
+      y0 = e.touches ? e.touches[0].clientY : e.clientY; v0 = state[k] | 0;
+      window.addEventListener("mousemove", move); window.addEventListener("mouseup", up);
+      window.addEventListener("touchmove", move, { passive: false });
+      window.addEventListener("touchend", up);
+      e.preventDefault();
+    }
+    kn.addEventListener("mousedown", down);
+    kn.addEventListener("touchstart", down, { passive: false });
+    /* reset = the DSP's own default. CW-78's defaults are page 30's factory
+     * arguments and are nowhere near pot centre, so it has to ask. */
+    kn.addEventListener("dblclick", function () {
+      schwungRemote.setParam(key(k), "default");
+      setTimeout(function () {
+        schwungRemote.getParam(key(k)).then(function (v) { apply(k, v); });
+      }, 120);
+    });
+    wrap.appendChild(lg); wrap.appendChild(kn); wrap.appendChild(val);
+    parent.appendChild(wrap); render(state[k] | 0);
+    return wrap;
+  }
+
+  function sel(parent, k, label, opts) {
+    var wrap = document.createElement("div"); wrap.className = "knobwrap";
+    var lg = document.createElement("div"); lg.className = "lbl"; lg.textContent = label;
+    var s = document.createElement("select");
+    opts.forEach(function (o, i) {
+      var op = document.createElement("option"); op.value = i; op.textContent = o;
+      s.appendChild(op);
+    });
+    s.addEventListener("change", function () { send(k, s.value | 0); });
+    addWidget(k, function (v) { s.value = Math.min(v, opts.length - 1); });
+    wrap.appendChild(lg); wrap.appendChild(s); parent.appendChild(wrap);
+    s.value = state[k] | 0;
+  }
+
+  function column(parent, cls) {
+    var c = document.createElement("div");
+    c.className = "col" + (cls ? " " + cls : "");
+    parent.appendChild(c); return c;
+  }
+  function rule(parent, section) {
+    var d = document.createElement("div");
+    d.className = "rule" + (section ? " section" : "");
+    parent.appendChild(d);
+  }
+  function gap(parent, n) {
+    for (var i = 0; i < n; i++) {
+      var g = document.createElement("div");
+      g.className = "knobwrap"; parent.appendChild(g);
+    }
+  }
+
+  /*
+   * Roland's lettering on the name plates: the first two letters of each word
+   * set large, the rest small. VElocity, BAss DRum, CLsd HIhat. It is a small
+   * thing and it is most of why the plates look right.
+   */
+  function plateText(name) {
+    return name.split(" ").map(function (w) {
+      return "<b>" + w.slice(0, 2) + "</b>" + w.slice(2).toLowerCase();
+    }).join(" ");
+  }
+  /* A single nameplate under a column that is not an instrument — the two
+     send buses, which have no alternate name above them. */
+  function plateOnly(col, name) {
+    var box = document.createElement("div"); box.className = "plates";
+    var top = document.createElement("span");
+    top.className = "plate empty"; top.innerHTML = "&nbsp;";
+    box.appendChild(top);
+    var p = document.createElement("span");
+    p.className = "plate"; p.innerHTML = plateText(name);
+    box.appendChild(p);
+    col.appendChild(box);
+  }
+  function plates(col, L) {
+    var box = document.createElement("div"); box.className = "plates";
+    var top = document.createElement("span");
+    if (L.alt) { top.className = "plate alt"; top.innerHTML = plateText(L.alt); }
+    else {
+      /* Keeps every cream plate on one baseline whether or not this column
+       * carries an alternate above it. */
+      top.className = "plate empty"; top.innerHTML = "&nbsp;";
+    }
+    box.appendChild(top);
+    var p = document.createElement("span");
+    p.className = "plate" + (L.isAlt ? " alt" : "");
+    p.innerHTML = plateText(L.name); box.appendChild(p);
+    col.appendChild(box);
+  }
+
+  /* ---- upper panel: VELOCITY | the instruments ---- */
+  var rack = document.getElementById("rack");
+  var cols = [];
+  {
+    var ac = column(rack, "narrow");
+    knob(ac, "vel_depth", "Range");
+    gap(ac, 3);
+    var box = document.createElement("div"); box.className = "plates";
+    var sp = document.createElement("span"); sp.className = "plate empty";
+    sp.innerHTML = "&nbsp;"; box.appendChild(sp);
+    var acp = document.createElement("span"); acp.className = "plate";
+    acp.innerHTML = plateText("VELOCITY"); box.appendChild(acp);
+    ac.appendChild(box);
+    rule(rack, true);
+  }
+  panelLanes().forEach(function (e, pos) {
+    if (pos) rule(rack);
+    var L = e.L;
+    var c = column(rack);
+    knob(c, L.id + "_level", "Level");
+    L.knobs.forEach(function (kk) {
+      if (kk) knob(c, kk[0], kk[1]); else gap(c, 1);
+    });
+    plates(c, L);
+    cols[e.index] = c;                     /* indexed by LANE, not position */
+  });
+
+  /* MASTER VOLUME lives in the bottom-right corner, past the branding. */
+  {
+    var m = document.getElementById("master");
+    knob(m, "volume", "", true);
+    var ml = document.createElement("div"); ml.className = "lbl";
+    ml.textContent = "MASTER VOLUME"; m.appendChild(ml);
+  }
+
+  /* ---- lower deck: the controls no CR-78 had, in the same columns ---- */
+  var fx = document.getElementById("fx");
+  {
+    var pad = column(fx, "narrow"); pad.style.visibility = "hidden";
+    rule(fx, true);
+  }
+  panelLanes().forEach(function (e, pos) {
+    if (pos) rule(fx);
+    var L = e.L;
+    var c = column(fx);
+    knob(c, L.id + "_drive", "Drive");
+    sel(c, L.id + "_dist_type", "Dist", DIST);
+    /* The two sends, on every lane but the kick — which is dry by design,
+       so it gets the gap rather than a pair of dead knobs. */
+    if (DRY_LANES.indexOf(L.id) >= 0) { gap(c, 2); }
+    else { knob(c, L.id + "_rev", "Rev"); knob(c, L.id + "_dly", "Dly"); }
+    if (L.fx) L.fx.forEach(function (x) { sel(c, x[0], x[1], x[2]); });
+  });
+
+  /* ---- the send buses: their OWN row ----
+     Not appended to #fx. Sixteen lanes plus Master already fill that row to
+     the pixel (1002 of 1002); two more columns overflowed it by 154 px and
+     pushed both buses off the right edge, where they could not be seen or
+     reached. */
+  {
+    var bus = document.getElementById("buses");
+    var rv = column(bus);
+    knob(rv, "rev_decay", "Decay");
+    knob(rv, "rev_tone",  "Tone");
+    knob(rv, "rev_hpf",   "HPF");
+    knob(rv, "rev_level", "Level");
+    plateOnly(rv, "REVERB");
+    rule(bus, true);
+    var dl = column(bus);
+    sel(dl,  "dly_time", "Time", DIVS);
+    knob(dl, "dly_fdbk",  "Fdbk");
+    knob(dl, "dly_tone",  "Tone");
+    knob(dl, "dly_hpf",   "HPF");
+    knob(dl, "dly_level", "Level");
+    plateOnly(dl, "DELAY");
+    rule(bus, true);
+
+    /* Master lives HERE, not tacked onto the end of the fourteen lanes.
+       Appended there it was a seventeenth column the upper rack has no
+       counterpart for, so it overflowed the panel and got clipped — and it
+       never belonged in a row of drums anyway. */
+    var mm = column(bus);
+    knob(mm, "master_drive", "Drive");
+    sel(mm, "master_dist", "Dist", MDIST);
+    knob(mm, "comp", "Comp");
+    /* MOD. A CR-78 has one hi-hat and nothing on the board chokes anything;
+       this exists because the decay mod turned the maracas and tambourine
+       into a hat section. Off by default. */
+    sel(mm, "hat_choke", "Choke", ["Off", "MA/TB", "All3"]);
+    sel(mm, "note_map", "Notes", ["Rack 36", "GM"]);
+    plateOnly(mm, "MASTER");
+  }
+
+  /* ---- the rhythm deck: the CR-78's own bottom panel --------------------
+   *
+   * Laid out as the hardware lays it out, because that layout carries real
+   * information: the cap colour tells you the family (cream ballroom, green
+   * latin, blue rock, amber disco, red cancel), the dual-labelled caps tell
+   * you which buttons the A/B lever reaches, and CANCEL is where you stop.
+   *
+   * CANCEL is Mode=Off, which is what the button does on the machine. That
+   * mapping is why this module needs no separate on/off control here at all.
+   */
+  {
+    var rh = document.getElementById("rhythm");
+
+    var hdr = document.createElement("div"); hdr.className = "rhdr";
+    hdr.innerHTML = "Rhythm &mdash; the CR-78's own presets" +
+                    "<em>pages 27&ndash;28 of the service notes</em>";
+    rh.appendChild(hdr);
+
+    function group(parent, cap) {
+      var g = document.createElement("div"); g.className = "rhgrp";
+      if (cap) {
+        var c = document.createElement("div"); c.className = "cap";
+        c.textContent = cap; g.appendChild(c);
+      }
+      var b = document.createElement("div"); b.className = "rhbtns";
+      g.appendChild(b); parent.appendChild(g);
+      return b;
+    }
+
+    var btnEls = [];
+    function styleBtn(parent, i) {
+      var d = RHY_BTN[i];
+      var b = document.createElement("div");
+      b.className = "rbtn " + d.c;
+      b.innerHTML = d.t.length > 1
+        ? d.t[0] + "<small>" + d.t[1] + "</small>"
+        : d.t[0];
+      b.title = d.dual ? "Two rhythms — the RHYTHM A/B lever picks between them"
+                       : d.t[0];
+      b.addEventListener("click", function () {
+        send("rhy_style", i);
+        send("rhy_mode", 1);
+      });
+      parent.appendChild(b);
+      btnEls[i] = b;
+      return b;
+    }
+    function cancelBtn(parent) {
+      var b = document.createElement("div");
+      b.className = "rbtn red"; b.textContent = "CANCEL";
+      b.title = "Stop the preset rhythm (Mode = Off)";
+      b.addEventListener("click", function () { send("rhy_mode", 0); });
+      parent.appendChild(b);
+      return b;
+    }
+
+    /* --- row 1: the rock and disco block --- */
+    var r1 = document.createElement("div"); r1.className = "rhrow";
+    var rk = group(r1, "");
+    for (var i = 11; i <= 16; i++) styleBtn(rk, i);
+    cancelBtn(rk);
+    rh.appendChild(r1);
+
+    /* --- row 2: the eleven ballroom and latin buttons, then the lever --- */
+    var r2 = document.createElement("div"); r2.className = "rhrow";
+    var st = group(r2, "");
+    for (var j = 0; j <= 10; j++) styleBtn(st, j);
+    cancelBtn(st);
+
+    var lev = document.createElement("div"); lev.className = "lever a";
+    var ln = document.createElement("div"); ln.className = "lname";
+    ln.textContent = "Rhythm"; lev.appendChild(ln);
+    var lb = document.createElement("div"); lb.className = "body";
+    var tr = document.createElement("div"); tr.className = "track";
+    var bat = document.createElement("div"); bat.className = "bat";
+    tr.appendChild(bat); lb.appendChild(tr);
+    var tk = document.createElement("div"); tk.className = "ticks";
+    tk.innerHTML = "<span>A</span><span>B</span>"; lb.appendChild(tk);
+    lev.appendChild(lb);
+    tr.addEventListener("click", function () {
+      send("rhy_ab", (state["rhy_ab"] | 0) ? 0 : 1);
+    });
+    r2.appendChild(lev);
+    rh.appendChild(r2);
+
+    /* --- keep the panel in step with the parameters --- */
+    function paint() {
+      var on  = (state["rhy_mode"]  | 0) === 1;
+      var cur = state["rhy_style"] | 0;
+      var ab  = (state["rhy_ab"] | 0) ? 1 : 0;
+      btnEls.forEach(function (b, i) {
+        if (!b) return;
+        b.classList.toggle("on", on && i === cur);
+        /* A dual cap shows which of its two rhythms the lever has selected. */
+        var d = RHY_BTN[i];
+        if (d.dual)
+          b.innerHTML = ab ? "<small>" + d.t[0] + "</small>" + d.t[1]
+                           : d.t[0] + "<small>" + d.t[1] + "</small>";
+      });
+      lev.classList.toggle("a", !ab);
+      lev.classList.toggle("b", !!ab);
+      /* The lever is live on every button — 17 x 2 = Roland's 34 presets.
+         Dual caps: A/B are two styles. Single caps: two variations. */
+      var dual = RHY_BTN[cur] && RHY_BTN[cur].dual;
+      lev.classList.remove("off");
+      lev.title = dual ? "Picks which of this button's two styles plays"
+                       : "Picks this rhythm's A or B variation";
+    }
+    addWidget("rhy_mode",  paint);
+    addWidget("rhy_style", paint);
+    addWidget("rhy_ab",    paint);
+    paint();
+  }
+
+  /* ---- the button row: the CR-78's buttons, muting instead of stepping ---- */
+  var steps = document.getElementById("steps");
+  var stepBtns = [];
+  panelLanes().forEach(function (e, pos) {
+    var L = e.L, idx = e.index;     /* idx is the LANE, pos is where it sits */
+    var b = document.createElement("div");
+    b.className = "step"; b.style.background = L.col;
+    b.innerHTML = '<span class="n">' + (pos + 1) + '</span>' + L.id.toUpperCase() +
+                  '<span class="led"></span>';
+    b.title = L.name + " — click to mute";
+    b.addEventListener("click", function () {
+      mutesMask = (mutesMask ^ (1 << idx)) & LANE_MASK;
+      schwungRemote.setParam(key("mutes"), String(mutesMask));
+      renderMutes();
+    });
+    steps.appendChild(b); stepBtns[idx] = b;
+  });
+  function renderMutes() {
+    stepBtns.forEach(function (b, idx) {
+      if (!b) return;
+      b.className = "step" + (((mutesMask >> idx) & 1) ? " muted" : "") +
+                    (idx === lane ? " sel" : "");
+    });
+  }
+
+  /*
+   * Follow the device. The on-device editor writes synth:ui_focus (the lane
+   * index) on every pad it follows, and the manager pushes writes and re-reads
+   * it on its refresh. Nothing needs selecting here — every instrument is
+   * already on the panel — so following just moves the highlight and the
+   * deck's header, which is what tells you which drum you last hit. Lane 16
+   * is Master and has no column; apply() ignores it.
+   */
+  function selectLane(i) {
+    lane = i;
+    cols.forEach(function (c, j) {
+      if (c) c.className = "col" + (j === i ? " sel" : "");
+    });
+    document.getElementById("lane-name").textContent = LANES[i].name;
+    renderMutes();
+  }
+
+  /* ---- bridge ---- */
+  schwungRemote.onParamChange(function (params) {
+    Object.keys(params).forEach(function (full) {
+      if (full.indexOf("synth:") === 0) apply(full.substring(6), params[full]);
+    });
+  });
+  function seed() {
+    Object.keys(widgets).concat(["mutes", "ui_focus"]).forEach(function (k) {
+      schwungRemote.getParam(key(k)).then(function (v) {
+        if (v !== undefined && v !== null && v !== "") apply(k, v);
+      });
+    });
+  }
+
+  selectLane(0);
+  seed();
+  setTimeout(seed, 400); setTimeout(seed, 1500);
+})();
+</script>
+</body>
+</html>

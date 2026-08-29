@@ -1,0 +1,7 @@
+{
+  "version": "1.0.0",
+  "download_url": "https://github.com/athousanddetails/schwung-cw-78/releases/download/v1.0.0/cw78-module.tar.gz",
+  "name": "CW-78",
+  "description": "Roland CR-78 CompuRhythm - 14 circuit-modelled voices built from the 1979 service notes, plus the machine's own 34 preset rhythms. 7 distortion types per voice and on the master, reverb and delay sends, bus compressor.",
+  "repo_url": "https://github.com/athousanddetails/schwung-cw-78"
+}

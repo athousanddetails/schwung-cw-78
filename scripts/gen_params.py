@@ -667,7 +667,7 @@ SHORT = {"Tune": "TUNE", "Decay": "DECAY", "Attack": "ATTK", "Tone": "TONE",
          "Master Dist": "MDIST", "Master Drive": "MDRV",
          "Volume": "VOL", "Velocity": "VEL", "Note Map": "NMAP",
          "Choke": "CHOKE",
-         "Mode": "MODE", "Bank": "BANK", "A/B": "A/B", "Style": "STYLE"}
+         "Mode": "MODE", "A/B": "A/B", "Style": "STYLE"}
 MOVY_NAME = {"bd": "Kick", "sd": "Snare", "rs": "Rim", "hh": "Hi Hat",
              "cy": "Cymbal", "ma": "Maracas", "cl": "Claves",
              "hb": "Hi Bngo", "lb": "Lo Bngo", "lc": "Lo Cnga",
@@ -684,19 +684,44 @@ def movy_slot(p):
     return d
 
 
+# Movy pad-follow (Movy PR #16, still a draft — this field is inert until it
+# ships, and costs nothing meanwhile): `pad` maps a Move pad to this bank, so
+# hitting a drum opens its page in Movy exactly as it does in the device
+# editor. ONE-BASED, which bit 9W9: Movy's drumPadOn returns 1 for the first
+# pad, so the voice at drum-rack note 36 is pad 1 and the lane order IS the
+# pad order. The map below must mirror PAD2LEVEL in src/ui_chain.js — the
+# device editor and Movy agreeing on which pad opens which page is the whole
+# point, and a second hand-written layout is how they'd stop agreeing.
+#
+#   pads 1-14   the fourteen voices, lane order
+#   pad  15     Main (the device's Master pad, note 94)
+#   pad  16     the device's Reverb/Delay TOGGLE. Movy has no toggle concept,
+#               so here it maps to Reverb alone — Delay is the very next bank
+#               on the jog. Gus's call; if a real toggle ever lands in Movy,
+#               swap this for it.
+#
+# A bank with no `pad` (Rhythm, Delay) is never auto-selected; the jog is how
+# you reach it, same as on the device.
+PAD_OF_LEVEL = {pid: i + 1 for i, (pid, _, _) in enumerate(PAGES)}
+
 banks = []
+# Master FIRST: opening the module lands on the master page, not on a drum —
+# 9W9 shipped drum-first and Gus called it out.
+banks.append({"name": "Master", "global": True, "pad": 15,
+              "rows": [[movy_slot(p) for p in GLOBALS] + [None] * (8 - len(GLOBALS))]})
 for pid, label, params in PAGES:
     full = params + PAGE_SENDS[pid]
     row = [movy_slot(p) for p in full] + [None] * (8 - len(full))
-    banks.append({"name": MOVY_NAME[pid], "rows": [row]})
+    banks.append({"name": MOVY_NAME[pid], "pad": PAD_OF_LEVEL[pid], "rows": [row]})
 for pid, label, params in RHYTHM_PAGES:
     row = [movy_slot(p) for p in params] + [None] * (8 - len(params))
     banks.append({"name": label, "rows": [row]})
 for pid, label, params in FX_PAGES:
     row = [movy_slot(p) for p in params] + [None] * (8 - len(params))
-    banks.append({"name": label, "rows": [row]})
-banks.append({"name": "Master", "global": True,
-              "rows": [[movy_slot(p) for p in GLOBALS] + [None] * (8 - len(GLOBALS))]})
+    bank = {"name": label, "rows": [row]}
+    if pid == "rev":
+        bank["pad"] = 16
+    banks.append(bank)
 movy = {"id": "cw78", "name": "CW-78",
         "drum": {"padCount": 14, "padNoteStart": 36, "rawMidi": False},
         "banks": banks}

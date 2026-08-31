@@ -722,8 +722,13 @@ for pid, label, params in FX_PAGES:
     if pid == "rev":
         bank["pad"] = 16
     banks.append(bank)
+# padFollowLock opts in to Movy's Shift+jog-click freeze: pads keep playing
+# but stop turning the page, so the knobs being edited stay put — the same
+# idea as this module's own Main-page lock on the device. Off by default in
+# Movy per Gus, so absent-means-none; inert until Movy PR #16 ships.
 movy = {"id": "cw78", "name": "CW-78",
-        "drum": {"padCount": 14, "padNoteStart": 36, "rawMidi": False},
+        "drum": {"padCount": 14, "padNoteStart": 36, "rawMidi": False,
+                 "padFollowLock": True},
         "banks": banks}
 (root_dir / "src/movy_config.json").write_text(json.dumps(movy, indent=2) + "\n")
 

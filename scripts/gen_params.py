@@ -722,18 +722,15 @@ for pid, label, params in FX_PAGES:
     if pid == "rev":
         bank["pad"] = 16
     banks.append(bank)
-# padFollowLock opts in to Movy's Shift+jog-click freeze: pads keep playing
-# but stop turning the page, so the knobs being edited stay put — the same
-# idea as this module's own Main-page lock on the device. Off by default in
-# Movy per Gus, so absent-means-none; inert until Movy PR #16 ships.
 movy = {"id": "cw78", "name": "CW-78",
         # padCount is 16, NOT the fourteen voices: Movy resolves a pad number
         # only up to padCount (drumPadOfPhys returns -1 past it), so at 14 the
         # Main and FX pads mapped below would resolve to nothing and be
         # jog-only. Pads 15/16 send notes 50/51, which the DSP's drum-rack map
         # answers with silence — a page turn and no sound, same as the device.
-        "drum": {"padCount": 16, "padNoteStart": 36, "rawMidi": False,
-                 "padFollowLock": True},
+        # (padFollowLock briefly lived here; Dima dropped the lock from Movy
+        # PR #16 — Shift+jog-click is spoken for — so the field is ignored.)
+        "drum": {"padCount": 16, "padNoteStart": 36, "rawMidi": False},
         "banks": banks}
 (root_dir / "src/movy_config.json").write_text(json.dumps(movy, indent=2) + "\n")
 

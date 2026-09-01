@@ -315,6 +315,33 @@ import { setLED } from '/data/UserData/schwung/shared/input_filter.mjs';
                 },
                 { title: title() }
             );
+            /*
+             * THE SECOND HALF OF THE DRAW, and it is not optional.
+             *
+             * render() paints a page into a rect the CALLER owns; nothing in
+             * param_pages clears the screen, which is what lets a consumer
+             * host a page inside its own chrome. So anything FULL-SCREEN is
+             * handed back to the frame owner -- and that is us.
+             *
+             * Today that means the enum peek: turn a multi-option enum and its
+             * option list rises over the grid for ~700ms. Without this call
+             * the controller still tracks the peek and applyInput still
+             * swallows the Back that dismisses it; it is simply painted
+             * nowhere. That is how CW-78 shipped, silently -- reported from
+             * the device as "Mode and Style do not peek on the Rhythm page",
+             * which was true of every enum on every page, RHY Style's
+             * seventeen rhythms most of all.
+             *
+             * Guarded because renderOverlays landed in a later host than this
+             * file's min_host_version, and an older host simply has no
+             * overlays to draw.
+             */
+            if (typeof controller.renderOverlays === "function") {
+                controller.renderOverlays(
+                    { fillRect: fill_rect, print: print, textWidth: text_width },
+                    { clearScreen: clear_screen }
+                );
+            }
         } else {
             /* Non-grid page kinds do not occur in CW-78's hierarchy; if one ever
              * does, show something honest instead of a stale frame. */

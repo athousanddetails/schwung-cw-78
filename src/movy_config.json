@@ -2,7 +2,7 @@
   "id": "cw78",
   "name": "CW-78",
   "drum": {
-    "padCount": 14,
+    "padCount": 16,
     "padNoteStart": 36,
     "rawMidi": false,
     "padFollowLock": true

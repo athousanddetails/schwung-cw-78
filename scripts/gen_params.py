@@ -707,7 +707,13 @@ PAD_OF_LEVEL = {pid: i + 1 for i, (pid, _, _) in enumerate(PAGES)}
 banks = []
 # Master FIRST: opening the module lands on the master page, not on a drum —
 # 9W9 shipped drum-first and Gus called it out.
-banks.append({"name": "Master", "global": True, "pad": 15,
+# NO "global" flag on this bank, though 8W8's shape (which this emission was
+# copied from) carried one. In Movy, bank.global defaults every slot in the
+# bank to NON-AUTOMATABLE (config-pages.ts: `slot.automatable ?? (bank.global
+# ? false : ...)`) — so the flag silently made Volume, Comp, Velocity and the
+# master drive un-automatable. Found on 6W6, confirmed on 8W8 (fixed in its
+# v1.1.2), and it had been copied here too.
+banks.append({"name": "Master", "pad": 15,
               "rows": [[movy_slot(p) for p in GLOBALS] + [None] * (8 - len(GLOBALS))]})
 for pid, label, params in PAGES:
     full = params + PAGE_SENDS[pid]

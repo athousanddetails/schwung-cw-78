@@ -9,7 +9,6 @@
   "banks": [
     {
       "name": "Master",
-      "global": true,
       "pad": 15,
       "rows": [
         [

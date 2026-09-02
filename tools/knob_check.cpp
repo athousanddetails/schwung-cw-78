@@ -24,6 +24,23 @@
  * hash both. Same for each enum across its options. If the hashes match, the
  * control did nothing to the audio and this fails and names it.
  *
+ * MUTATION-TESTED, AND THE MUTATION HAS TO BE EXACT. Stub sd_snappy so the
+ * pot resolves but never reaches the voice:
+ *
+ *     e->sdv.setSnappy(64.0f / 127.0f);     // its exact default position
+ *
+ *     knob_check     FAIL — sd_snappy does nothing
+ *     golden_check   PASS — 35 renders bit-identical
+ *     voice_check    PASS      kit_check   PASS
+ *     rhythm/state/sends/choke/render   all PASS
+ *
+ * knob_check is the ONLY check here that sees it. The exactness matters: a
+ * first attempt hard-wired 0.55f, which is near the default but not it, and
+ * golden_check caught that — which would have "proved" the suite already
+ * covered this class of bug when it does not. 8W8 hit the same trap and
+ * flagged it. A mutation that changes the DEFAULT sound tests the golden
+ * baseline; only one that leaves the default untouched tests this.
+ *
  * A control legitimately silent in one context is declared below with the
  * reason, never skipped quietly — an unexplained skip is how the next dead
  * knob hides.

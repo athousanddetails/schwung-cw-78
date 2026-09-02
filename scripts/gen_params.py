@@ -694,27 +694,43 @@ def movy_slot(p):
 # point, and a second hand-written layout is how they'd stop agreeing.
 #
 #   pads 1-14   the fourteen voices, lane order
-#   pad  15     Main (the device's Master pad, note 94)
-#   pad  16     the device's Reverb/Delay TOGGLE. Movy has no toggle concept,
-#               so here it maps to Reverb alone — Delay is the very next bank
-#               on the jog. Gus's call; if a real toggle ever lands in Movy,
-#               swap this for it.
 #
-# A bank with no `pad` (Rhythm, Delay) is never auto-selected; the jog is how
-# you reach it, same as on the device.
+# NO PAGE-ONLY PADS. An earlier revision put Main on pad 15 and Reverb on 16 —
+# the device's own Master and Reverb/Delay seats, past the kit's notes so they
+# sound nothing and only turn the page. Movy takes the LEADING run of
+# pad-declaring banks as the voices, so those two pads made Master and Reverb
+# read as voices and took them out of the page rotation entirely. Pages without
+# a voice get their own seat in the page list instead; in Movy pads 15 and 16
+# are simply dead. (The device editor keeps both seats — that is our own UI and
+# is unaffected.)
 PAD_OF_LEVEL = {pid: i + 1 for i, (pid, _, _) in enumerate(PAGES)}
 
 banks = []
-# Master FIRST: opening the module lands on the master page, not on a drum —
-# 9W9 shipped drum-first and Gus called it out.
-# NO "global" flag on this bank, though 8W8's shape (which this emission was
-# copied from) carried one. In Movy, bank.global defaults every slot in the
+# VOICES FIRST, then the pages with no voice behind them.
+#
+# Movy takes exactly one shape here, and it is the same shape padSpecific has
+# always had (forge, weird-dreams) — a pad-following page first, ordinary pages
+# behind it:
+#
+#     banks: [ voice, voice, ..., Master, Rhythm, Reverb, Delay ]
+#              ^-- each declares `pad`     ^-- none of them do
+#
+# The fourteen voice pages share ONE seat in Movy's jog rotation, so this kit
+# reads <voice> -> Master -> Rhythm -> Reverb -> Delay: five pages, not
+# eighteen. The pad picks which voice that first seat holds, and only while a
+# voice page is the one open — pressing a pad on Reverb re-points the voice
+# page without dragging you off Reverb.
+#
+# The run must LEAD: Master ahead of the voices would leave Movy with no voice
+# slot at all. This differs from our own editor, which opens on Master; Movy
+# opens on the voice you last hit, the way it opens forge and weird-dreams.
+#
+# NO "global" flag on the Master bank, though 8W8's shape (which this emission
+# was copied from) carried one. In Movy, bank.global defaults every slot in the
 # bank to NON-AUTOMATABLE (config-pages.ts: `slot.automatable ?? (bank.global
 # ? false : ...)`) — so the flag silently made Volume, Comp, Velocity and the
 # master drive un-automatable. Found on 6W6, confirmed on 8W8 (fixed in its
 # v1.1.2), and it had been copied here too.
-banks.append({"name": "Master", "pad": 15,
-              "rows": [[movy_slot(p) for p in GLOBALS] + [None] * (8 - len(GLOBALS))]})
 for pid, label, params in PAGES:
     full = params + PAGE_SENDS[pid]
     row = [movy_slot(p) for p in full] + [None] * (8 - len(full))
@@ -724,20 +740,37 @@ for pid, label, params in RHYTHM_PAGES:
     banks.append({"name": label, "rows": [row]})
 for pid, label, params in FX_PAGES:
     row = [movy_slot(p) for p in params] + [None] * (8 - len(params))
-    bank = {"name": label, "rows": [row]}
-    if pid == "rev":
-        bank["pad"] = 16
-    banks.append(bank)
+    banks.append({"name": label, "rows": [row]})
+# Master LAST. Reading the chain left to right — voices, the rhythm section,
+# their sends, then the bus everything lands on — is the order the rest of the
+# Schwung fleet uses, and the one a chain view implies. Our own editor still
+# opens on it.
+banks.append({"name": "Master",
+              "rows": [[movy_slot(p) for p in GLOBALS] + [None] * (8 - len(GLOBALS))]})
 movy = {"id": "cw78", "name": "CW-78",
-        # padCount is 16, NOT the fourteen voices: Movy resolves a pad number
-        # only up to padCount (drumPadOfPhys returns -1 past it), so at 14 the
-        # Main and FX pads mapped below would resolve to nothing and be
-        # jog-only. Pads 15/16 send notes 50/51, which the DSP's drum-rack map
-        # answers with silence — a page turn and no sound, same as the device.
+        # padCount is the kit: fourteen voices, fourteen pads. It used to be 16
+        # to keep the page-only pads addressable (a pad past padCount resolves
+        # to nothing — drumPadOfPhys returns -1). With those gone the grid says
+        # what the machine has, and the last two seats of the 4x4 are dead
+        # rather than live-but-silent.
         # (padFollowLock briefly lived here; Dima dropped the lock from Movy
         # PR #16 — Shift+jog-click is spoken for — so the field is ignored.)
-        "drum": {"padCount": 16, "padNoteStart": 36, "rawMidi": False},
+        "drum": {"padCount": len(PAGES), "padNoteStart": 36, "rawMidi": False},
         "banks": banks}
+# The voice run has to LEAD, with nothing claiming a pad behind it: Movy reads
+# the leading run as the voices and ignores a pad on anything after it.
+_voices = len(PAGES)
+_pads = [b["pad"] for b in banks if "pad" in b]
+for _i, _b in enumerate(banks):
+    if _i < _voices and "pad" not in _b:
+        raise SystemExit(f"movy bank {_i} {_b['name']!r} is inside the voice run "
+                         "but declares no pad")
+    if _i >= _voices and "pad" in _b:
+        raise SystemExit(f"movy bank {_b['name']!r} sits behind the voice run and "
+                         f"claims pad {_b['pad']}; Movy ignores that and the page "
+                         "becomes jog-only")
+if sorted(_pads) != list(range(1, _voices + 1)):
+    raise SystemExit(f"the voice run must claim pads 1..{_voices} exactly, got {sorted(_pads)}")
 (root_dir / "src/movy_config.json").write_text(json.dumps(movy, indent=2) + "\n")
 
 print(f"chain_params {len(cpj)}B  ui_pages {len(uhj)}B  "

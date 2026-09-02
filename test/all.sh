@@ -330,6 +330,22 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+step "every control actually does something"
+# The gap the rest of this suite left open: a knob wired to nothing passes
+# every other check here. It resolves, stores, round-trips and draws — it just
+# never reaches the voice. 8W8 shipped exactly that for months. Each control is
+# rendered at both ends of its range, in the context where it is SUPPOSED to
+# work (a distortion type needs Drive open; a bus control needs a send), and
+# the two renders must differ.
+if $CXX $FLAGS -o build-native/knob_check tools/knob_check.cpp \
+        src/dsp/cr78_engine.cpp >>"$log" 2>&1; then
+  build-native/knob_check >>"$log" 2>&1
+  verdict $?
+else
+  skip "knob_check did not build"
+fi
+
+# ---------------------------------------------------------------------------
 step "the kit is bit-identical to the golden baseline"
 # Every lane at factory defaults, the demo pattern and all twenty presets,
 # hashed. This is what makes "the mod did not touch the original sound" a

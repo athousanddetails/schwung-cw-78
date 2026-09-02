@@ -59,6 +59,28 @@
 
 static const float kSR = 44100.0f;
 
+/*
+ * A CHOKE NEEDS A GESTURE, NOT A CHORD. Choke is the one control whose effect
+ * is not visible in a single strike: something has to be RINGING before the
+ * cut can be heard. Triggering every lane on the same sample happens to
+ * change the render (they choke each other at t=0), so the control passes —
+ * but it passes for the wrong reason, and would go on passing if the choke
+ * only ever worked at zero delay. So Choke is measured as it is played:
+ * maracas, let it ring, then tambourine 120 ms later. Approach from the 8W8
+ * session, which found the same hole in its hat choke.
+ *
+ * AND THE FIRST LANE HAS TO STILL BE SOUNDING. The maracas' factory decay is
+ * about 20 ms, so at a 120 ms gap the choke is cutting silence and all three
+ * options render alike — the sequential version FAILED where the naive
+ * simultaneous one passed. That is the probe working: the honest gesture is
+ * the one that exposes what has to be true. The context opens ma_decay right
+ * up first, which is both the real reason anyone reaches for a choke and
+ * exactly what this module's decay-range mod exists to allow.
+ */
+static const int kChokeFirst  = CR78_MA;
+static const int kChokeSecond = CR78_TB;
+static bool is_choke(const char *key) { return !strcmp(key, "hat_choke"); }
+
 static uint64_t hash_render(const char *key, const char *val, int lane,
                             const std::string ctx[2][2], int nctx, int vel)
 {
@@ -68,12 +90,26 @@ static uint64_t hash_render(const char *key, const char *val, int lane,
     for(int i = 0; i < nctx; ++i)
         cr78_set_param(e, ctx[i][0].c_str(), ctx[i][1].c_str());
     if(key) cr78_set_param(e, key, val);
+
+    std::vector<float> b((size_t)(kSR * 2.0f), 0.0f);
+
+    if(key && is_choke(key))
+    {
+        const size_t gap = (size_t)(kSR * 0.120f);
+        cr78_trigger(e, kChokeFirst, vel);
+        cr78_render(e, b.data(), (int)gap);
+        cr78_trigger(e, kChokeSecond, vel);
+        cr78_render(e, b.data() + gap, (int)(b.size() - gap));
+        cr78_destroy(e);
+    }
+    else
+    {
     if(lane >= 0) cr78_trigger(e, lane, vel);
     else for(int v = 0; v < CR78_NUM_VOICES; ++v) cr78_trigger(e, v, vel);
 
-    std::vector<float> b((size_t)(kSR * 2.0f), 0.0f);
     cr78_render(e, b.data(), (int)b.size());
     cr78_destroy(e);
+    }
 
     uint64_t h = 1469598103934665603ULL;
     for(float x : b)
@@ -143,6 +179,8 @@ static const Ctx kContext[] = {
      */
     { "rev_",  "sd_rev", "127", NULL, NULL },
     { "dly_",  "sd_dly", "127", NULL, NULL },
+    /* a choke needs a long-ringing lane to cut — see the note above */
+    { "hat_choke", "ma_decay", "127", NULL, NULL },
 };
 
 /* Fill ctx[] with the prerequisites for `key`, "@" standing for its lane id. */
@@ -176,9 +214,12 @@ static int context_for(const char *key, const char *lane,
  * lives somewhere this probe cannot see, and the reason says where.
  */
 struct Excuse { const char *key; const char *why; };
+static bool kExcuseUsed[8];
 static const Excuse kExcused[] = {
-    { "ui_focus", "editor bookkeeping — which page the device shows, no audio path" },
-    { "mutes",    "the mute tests own this; setting it here would silence the lane under test" },
+    /* ui_focus and mutes were listed here and never fired: they are plugin
+     * state, not engine params, so they are not in the tables this walks. An
+     * excuse for a control that does not exist explains nothing and reads as
+     * though it does — the coverage check at the end now fails on it. */
     { "note_map", "maps MIDI notes to lanes in the plugin — changes WHICH voice a note plays, not how any voice sounds" },
     { "rhy_mode",  "rhythm playback lives in the plugin's block loop, not the engine" },
     { "rhy_style", "as rhy_mode" },
@@ -186,7 +227,8 @@ static const Excuse kExcused[] = {
 };
 static const char *excuse_for(const char *key)
 {
-    for(const Excuse &x : kExcused) if(!strcmp(x.key, key)) return x.why;
+    for(size_t i = 0; i < sizeof kExcused / sizeof kExcused[0]; ++i)
+        if(!strcmp(kExcused[i].key, key)) { kExcuseUsed[i] = true; return kExcused[i].why; }
     return NULL;
 }
 
@@ -233,7 +275,26 @@ int main(void)
                  key, lane >= 0 ? cr78_voice_id(lane) : "kit", n); ++dead; }
     }
 
-    printf("\n%d control(s) measured, %d excused with a reason.\n", checked, excused);
+    /*
+     * COVERAGE. Every control in the generated tables is walked by
+     * construction — this file names no control to measure, so one added
+     * tomorrow is measured tomorrow without touching this file. What CAN rot
+     * is the excuse list: an entry naming a control that no longer exists
+     * goes on looking like a considered exemption. The 8W8 session made its
+     * coverage enforced rather than assumed after finding the same class of
+     * hole; this is that idea in the shape this probe needs.
+     */
+    const int total = CR78_NUM_POTS + CR78_NUM_ENUMS;
+    if(checked + excused != total)
+    { printf("\nFAIL: %d of %d controls accounted for — the walk missed some\n",
+             checked + excused, total); ++dead; }
+    for(size_t i = 0; i < sizeof kExcused / sizeof kExcused[0]; ++i)
+        if(!kExcuseUsed[i])
+        { printf("\nFAIL: '%s' is excused but is not a control — stale excuse\n",
+                 kExcused[i].key); ++dead; }
+
+    printf("\n%d control(s) measured, %d excused with a reason, "
+           "%d of %d accounted for.\n", checked, excused, checked + excused, total);
     if(dead)
     { printf("%d DEAD CONTROL(S) — each resolves and stores but never reaches "
              "the audio.\n", dead); return 1; }

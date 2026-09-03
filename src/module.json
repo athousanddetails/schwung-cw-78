@@ -2,7 +2,7 @@
   "id": "cw78",
   "name": "CW-78",
   "abbrev": "CW-78",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Roland CR-78 CompuRhythm - 14 circuit-modelled voices built from the 1979 service notes and held to Roland's own factory alignment table, plus the machine's 34 preset rhythms. 7 distortion types per voice and on the master, reverb and delay sends, bus compressor.",
   "author": "athousanddetails; every voice modelled from the Roland CR-78 service notes (June 1979), VG-11A voicing board",
   "dsp": "dsp.so",

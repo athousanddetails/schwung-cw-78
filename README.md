@@ -95,8 +95,9 @@ sound and not only a louder one.
   playback). **Mute+Pad** mutes that drum (`[M]` in the title bar).
 - **Pad 15** opens **Main**; **pad 16** alternates **Reverb / Delay**. These
   two only switch the page — they never sound.
-- **Main-page lock:** press the **jog while on Main** to lock it (`[L]` in
-  the title bar). Pads still play and record, but the page stops following
+- **Main-page lock:** **Shift + jog click while on Main** locks it (`[L]` in
+  the title bar). A plain click belongs to Schwung — it opens the section list,
+  and activates rows on the My Presets / Module pages. Pads still play and record, but the page stops following
   them, so the master knobs stay under your hands while you jam. Shift+Pad
   still selects, and another jog click unlocks.
 - **Knobs 1–8** edit the visible page, drawn with Schwung's stock knob grid

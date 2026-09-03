@@ -245,10 +245,18 @@ int main(int argc, char **argv)
         ok(m == CR78_UI_PAGES_LEN, "ui_pages length", NULL);
         ok(m > 0 && buf[0] == '{', "ui_pages is an object", NULL);
 
-        /* ui_hierarchy MUST be absent, or enterComponentEdit prefers it and
-         * never loads ui_chain.js — the pad gestures silently stop working. */
-        ok(api->get_param(inst, "ui_hierarchy", buf, sizeof(buf)) < 0,
-           "ui_hierarchy is NOT served", NULL);
+        /* ui_hierarchy must be SERVED AND EMPTY — length 0, not an error.
+         * The host's load gate reads three answers off this key: JSON =
+         * declared, "" = served with none (fall back to ui_chain.js at once),
+         * error = incomplete, hold and retry. Returning -1 is the third, and
+         * it left Swap Module into this module on a permanent "Loading..."
+         * card. Empty still means enterComponentEdit prefers ui_chain.js, so
+         * the normal path is unchanged. */
+        {
+            const int m = api->get_param(inst, "ui_hierarchy", buf, sizeof(buf));
+            ok(m == 0 && buf[0] == 0,
+               "ui_hierarchy is served EMPTY (not an error)", NULL);
+        }
     }
 
     /* ---- 4. every generated key resolves in the engine ----

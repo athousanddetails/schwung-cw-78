@@ -33,7 +33,7 @@
 
 import { createController } from '/data/UserData/schwung/shared/param_pages/page_controller.mjs';
 import { decodeInput, applyInput } from '/data/UserData/schwung/shared/param_pages/page_input.mjs';
-import { PAGE_KNOBS } from '/data/UserData/schwung/shared/param_pages/page_plan.mjs';
+import { PAGE_KNOBS, PAGE_MENU } from '/data/UserData/schwung/shared/param_pages/page_plan.mjs';
 import { LAYOUT_MOVY } from '/data/UserData/schwung/shared/param_pages/render_page_movy.mjs';
 import { setLED } from '/data/UserData/schwung/shared/input_filter.mjs';
 
@@ -248,7 +248,21 @@ import { setLED } from '/data/UserData/schwung/shared/input_filter.mjs';
         controller = createController({
             getParam: ctlGetParam,
             setParam: ctlSetParam,
-            announce: announce
+            announce: announce,
+            /* The host's own two trailing pages — My Presets and Module —
+             * which every stock grid gets for free and a module that brings
+             * its own ui_chain.js never did, because the host only handed
+             * them to its own controller.
+             *
+             * Guarded: the binding is absent on a stock host and absent for a
+             * Master FX position, which has no preset record. Empty array
+             * means nothing is appended, which is exactly how this behaved
+             * before. */
+            trailingMenus: function () {
+                return (typeof shadow_component_trailing_menus === "function")
+                    ? (shadow_component_trailing_menus() || [])
+                    : [];
+            }
         });
         controller.load({ slot: mySlot, component: "synth", prefix: "synth" });
         controller.setLayout(LAYOUT_MOVY);
@@ -260,7 +274,7 @@ import { setLED } from '/data/UserData/schwung/shared/input_filter.mjs';
                 "Sh+Pad: select only",
                 "Mute+Pad: mute drum",
                 "Jog: page  Click: list",
-                "Click on Main: lock",
+                "Sh+Click Main: lock",
                 "Shift: fine + values",
                 "Mute+knob: default"
             ], "CW-78");
@@ -304,7 +318,12 @@ import { setLED } from '/data/UserData/schwung/shared/input_filter.mjs';
          * binding does (a full page render is ~1.6 ms, measured upstream). */
         clear_screen();
         var page = controller.page;
-        if (controller.pickerOpen || (page && page.kind === PAGE_KNOBS)) {
+        /* PAGE_MENU as well as the grid: a menu page is a list of rows the
+         * library draws itself. Admitting only PAGE_KNOBS printed the
+         * unsupported-page fallback OVER a page the library was about to
+         * draw. */
+        if (controller.pickerOpen ||
+            (page && (page.kind === PAGE_KNOBS || page.kind === PAGE_MENU))) {
             controller.render(
                 {
                     fillRect: fill_rect, print: print, textWidth: text_width,
@@ -436,12 +455,29 @@ import { setLED } from '/data/UserData/schwung/shared/input_filter.mjs';
         if (!controller) return;
         var intent = decodeInput(data, { shift: shiftHeld(), mute: muteHeld });
         if (!intent) return;
-        /* Before applyInput, or the section picker consumes the click. */
-        if (intent.type === "click" && !controller.pickerOpen && onMainPage()) {
+        /* SHIFT + jog click, not a plain click. A plain click belongs to the
+         * platform now: it opens the section list on a grid page and ACTIVATES
+         * A ROW on the two trailing pages. A module that keeps its own gesture
+         * on it makes My Presets unusable. Before applyInput either way, or
+         * the picker consumes it. */
+        if (intent.type === "click" && shiftHeld() &&
+            !controller.pickerOpen && onMainPage()) {
             globalThis.__78w_main_lock = !globalThis.__78w_main_lock;
-            return;                        /* click = lock toggle, not picker */
+            return;
         }
         var todo = applyInput(controller, intent, { nowMs: Date.now(), reveal: false });
+        /* A row activation comes back as { action: "menu", entry }. "menu" is
+         * the INTENT's kind; the key the host wants is entry.action. Handing
+         * it the word "menu" runs nothing, silently — 9W9 lost a round to
+         * exactly that. Performed by the shadow UI, not here: these keys
+         * reach the preset store, the component picker and the help screen,
+         * none of which a module can address. */
+        if (todo && todo.action === "menu") {
+            var act = todo.entry && todo.entry.action;
+            if (act && typeof shadow_component_run_action === "function")
+                shadow_component_run_action(act);
+            return;
+        }
         if (todo && todo.action === "exit") {
             /* Back never reaches us (the host consumes it); any other exit
              * intent just closes the picker. */
@@ -453,11 +489,19 @@ import { setLED } from '/data/UserData/schwung/shared/input_filter.mjs';
 
     function onMidiMessageExternal(data) { }
 
+    /* The host consumes Back and asks us first, so the ladder the stock grid
+     * climbs one rung at a time has to be climbed here, in page_input.mjs's
+     * own order — hint, peek, picker, menu — or Back means something
+     * different on this module than on every other grid. Without the menu
+     * rung, Back from inside My Presets skips the whole page bar and leaves
+     * the module. */
     function handleBack() {
-        if (controller && controller.pickerOpen) {
-            controller.closePicker();
-            return true;                       /* consumed: close the list */
-        }
+        if (!controller) { setPadBlock(false); pagePadsLit = false;
+                           paintPagePads(false, true); return false; }
+        if (controller.dismissHint && controller.dismissHint()) return true;
+        if (controller.dismissPeek && controller.dismissPeek()) return true;
+        if (controller.pickerOpen) { controller.closePicker(); return true; }
+        if (controller.exitMenu && controller.exitMenu()) return true;
         setPadBlock(false);
         /* The host stops ticking us after this, so the deactivate path in
          * tick() never runs — go dark now or stay lit forever. */
@@ -471,6 +515,21 @@ import { setLED } from '/data/UserData/schwung/shared/input_filter.mjs';
         tick: tick,
         onMidiMessageInternal: onMidiMessageInternal,
         onMidiMessageExternal: onMidiMessageExternal,
-        handleBack: handleBack
+        handleBack: handleBack,
+        /* A preset was saved or loaded while our grid is on screen. The
+         * My Presets row is built by OUR controller from the host's menus, so
+         * nothing else refreshes it and it would go on reading "(none)". */
+        onPresetsChanged: function () {
+            if (controller && typeof controller.refreshTrailing === "function")
+                controller.refreshTrailing();
+        },
+        /* After Load, Delete, Swap or Help the host reloads us and says which
+         * page we left from. The controller keeps the request armed until its
+         * pages arrive, so a contract still settling is fine. Without this
+         * every return lands on Main. */
+        restorePage: function (name, opts) {
+            if (controller && typeof controller.restorePage === "function")
+                controller.restorePage(name, opts || {});
+        }
     };
 })();

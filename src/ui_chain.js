@@ -13,7 +13,7 @@
  * Division of labour:
  *   param_pages (stock)          this file (CW-78)
  *   ------------------          ---------------------------------
- *   knob grid, Movy layout      pads pass through to Move + page-follow
+ *   knob grid                   pads pass through to Move + page-follow
  *   viz graphics (faders...)    Shift+Pad silent select (white pad follows)
  *   jog page / Shift+Jog        Mute+Pad per-lane CW-78 mutes
  *   section picker (jog click)  focus gate (never steal another slot's pads)
@@ -27,8 +27,7 @@
  * getParam below rewrites the controller's "ui_hierarchy" read to it. Pads are
  * not part of the stock grid's input model, so pad behaviour stays ours.
  *
- * GPL-3.0. param_pages © Schwung contributors; its level walk derives from
- * schwung-movy (MIT, megadake).
+ * GPL-3.0. param_pages © Schwung contributors.
  */
 
 import { createController } from '/data/UserData/schwung/shared/param_pages/page_controller.mjs';

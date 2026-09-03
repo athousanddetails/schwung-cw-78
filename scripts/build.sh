@@ -52,7 +52,6 @@ if [ "${NATIVE:-0}" != "1" ] && [ -f "$BUILD_DIR/dsp.so" ]; then
     cp src/ui_chain.js      dist/cw78/ 2>/dev/null || true
     cp src/web_ui.html      dist/cw78/ 2>/dev/null || true
     cp src/help.json        dist/cw78/ 2>/dev/null || true
-    cp src/movy_config.json dist/cw78/ 2>/dev/null || true
     (cd dist && tar -czf cw78-module.tar.gz cw78/)
     echo "Tarball: dist/cw78-module.tar.gz"
 fi

@@ -62,8 +62,6 @@ pattern rather than a synthetic downbeat.
 
 - **[Schwung](https://github.com/charlesvestal/schwung)** by Charles Vestal and
   contributors — the module platform and the shared `param_pages` knob grid.
-- **[Movy](https://github.com/DimaDake/schwung-movy)** by DimaDake — the page
-  model `movy_config.json` targets.
 
 ## Trademarks
 

@@ -107,8 +107,6 @@ sound and not only a louder one.
 - **Sequencing:** use Move's own sequencer — a drum track with a kit, track
   volume down, track MIDI OUT on the slot's channel. Each drum is its own lane.
   Note map: drum rack (36–49, default) or General MIDI, switchable.
-- Works with [Movy](https://github.com/DimaDake/schwung-movy) — a
-  `movy_config.json` ships with the module.
 
 ## Remote panel
 
@@ -145,8 +143,7 @@ preset rhythms' transport gate, the send buses and state round-trip — end to
 end.
 
 The parameter surface has one source: `scripts/gen_params.py` generates the
-pot table, `chain_params`, the page hierarchy and `movy_config.json` from a
-single dict. Adding a control is one edit.
+pot table, `chain_params` and the page hierarchy from a single dict. Adding a control is one edit.
 
 `./test/all.sh` runs everything that does not need the device:
 **`voice_check`** (every lane against page 30's alignment table),
@@ -174,9 +171,7 @@ CW-78 stands on other people's work and says so:
   all four kits feel identical under the hands. **No voice DSP is shared
   with any of them** — CW-78 contains no 808 or 909 circuitry.
 - **[Schwung](https://github.com/charlesvestal/schwung)** by Charles Vestal
-  and contributors — the platform and the shared `param_pages` knob grid;
-  **[Movy](https://github.com/DimaDake/schwung-movy)** by DimaDake for the
-  page model.
+  and contributors — the platform and the shared `param_pages` knob grid.
 
 This project was developed with AI assistance (Claude), with human direction
 and on-hardware verification throughout.
@@ -184,7 +179,7 @@ and on-hardware verification throughout.
 ## Contributing
 
 **Contributions are open to anyone, any time — just submit a PR.** Voice
-tweaks, rhythm corrections, UI improvements, Movy templates, docs, bug
+tweaks, rhythm corrections, UI improvements, docs, bug
 reports: all welcome. If you touch a voice, run `./test/all.sh` —
 `voice_check` holds the kit to the machine and `golden_check` proves you did
 not move it by accident. If you have a real CR-78 on a bench: **measure L5**

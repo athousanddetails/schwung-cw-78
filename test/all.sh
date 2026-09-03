@@ -39,19 +39,17 @@ have()    { command -v "$1" >/dev/null 2>&1; }
 
 # ---------------------------------------------------------------------------
 step "generator is in sync with the checked-in header"
-# gen_params.py is the single source of truth for the pot table, chain_params,
-# the page hierarchy and movy_config.json. If someone edits the generated
-# header by hand, everything downstream silently disagrees with it.
+# gen_params.py is the single source of truth for the pot table, chain_params
+# and the page hierarchy. If someone edits the generated header by hand,
+# everything downstream silently disagrees with it.
 if ! have python3; then
   skip "no python3"
 else
   cp src/dsp/cr78_params.h build-native/params.before
-  cp src/movy_config.json  build-native/movy.before 2>/dev/null || true
   python3 scripts/gen_params.py >/dev/null
-  if diff -q build-native/params.before src/dsp/cr78_params.h >/dev/null &&
-     diff -q build-native/movy.before   src/movy_config.json  >/dev/null
+  if diff -q build-native/params.before src/dsp/cr78_params.h >/dev/null
   then verdict 0; else
-    echo "   cr78_params.h or movy_config.json differ from what gen_params.py emits"
+    echo "   cr78_params.h differs from what gen_params.py emits"
     verdict 1
   fi
 fi

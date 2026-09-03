@@ -9,7 +9,7 @@ drift apart:
                      ui_chain.js loads it, see the comment in ui_chain.js)
   * the pot table  — key -> real engineering range + curve + default
 
-and src/movy_config.json from the same dict.
+from the same dict.
 
 The generator itself is 6W6's, inherited through 8W8 (GPL-3.0) — the module
 shell is deliberately identical across the kits so a control means the same
@@ -466,7 +466,7 @@ def chain_param(p):
     else:
         d = {"key": p["key"], "name": picker_name(p["key"], p["name"]),
              "type": "int", "min": 0, "max": 127}
-    # The factory default, so a reset gesture (stock Mute+knob, Movy, the web
+    # The factory default, so a reset gesture (stock Mute+knob, the web
     # panel's double-click) lands on an aligned CR-78 and not on a guessed 64.
     d["default"] = p["default"]
     v = viz_for(p)
@@ -656,91 +656,8 @@ static const char cr78_ui_pages_json[] =
 #endif /* CR78_PARAMS_H */
 """)
 
-# ---- movy_config.json: same source, Movy's shape. --------------------------
-# HARD RULE (cost a debugging session on Tablor): a Movy bank is EXACTLY ONE
-# PAGE. buildConfigPages keys bankGroups per BANK but the UI indexes per PAGE,
-# so a multi-row bank shifts every following page's label. One row per bank.
-SHORT = {"Tune": "TUNE", "Decay": "DECAY", "Attack": "ATTK", "Tone": "TONE",
-         "Drive": "DRIVE", "Distortion": "DIST", "Level": "LEVEL",
-         "Snappy": "SNAPY", "Rate": "RATE", "Rev": "REV", "Dly": "DLY",
-         "Fdbk": "FDBK", "HPF": "HPF", "Time": "TIME", "Comp": "COMP",
-         "Master Dist": "MDIST", "Master Drive": "MDRV",
-         "Volume": "VOL", "Velocity": "VEL", "Note Map": "NMAP",
-         "Choke": "CHOKE",
-         "Mode": "MODE", "A/B": "A/B", "Style": "STYLE"}
-MOVY_NAME = {"bd": "Kick", "sd": "Snare", "rs": "Rim", "hh": "Hi Hat",
-             "cy": "Cymbal", "ma": "Maracas", "cl": "Claves",
-             "hb": "Hi Bngo", "lb": "Lo Bngo", "lc": "Lo Cnga",
-             "cb": "Cowbell", "tb": "Tambrn", "gu": "Guiro", "mb": "Mtl Bt"}
-
-
-def movy_slot(p):
-    d = {"key": p["key"], "short": SHORT[p["name"]], "full": p["name"]}
-    if p["kind"] == "enum":
-        d["type"] = "enum"
-        d["options"] = list(p["options"])   # already sized for a 32 px cell
-    else:
-        d["type"] = "int"; d["min"] = 0; d["max"] = 127
-    return d
-
-
-# Movy pad-follow (Movy PR #16, still a draft — this field is inert until it
-# ships, and costs nothing meanwhile): `pad` maps a Move pad to this bank, so
-# hitting a drum opens its page in Movy exactly as it does in the device
-# editor. ONE-BASED, which bit 9W9: Movy's drumPadOn returns 1 for the first
-# pad, so the voice at drum-rack note 36 is pad 1 and the lane order IS the
-# pad order. The map below must mirror PAD2LEVEL in src/ui_chain.js — the
-# device editor and Movy agreeing on which pad opens which page is the whole
-# point, and a second hand-written layout is how they'd stop agreeing.
-#
-#   pads 1-14   the fourteen voices, lane order
-#   pad  15     Main (the device's Master pad, note 94)
-#   pad  16     the device's Reverb/Delay TOGGLE. Movy has no toggle concept,
-#               so here it maps to Reverb alone — Delay is the very next bank
-#               on the jog. Gus's call; if a real toggle ever lands in Movy,
-#               swap this for it.
-#
-# A bank with no `pad` (Rhythm, Delay) is never auto-selected; the jog is how
-# you reach it, same as on the device.
-PAD_OF_LEVEL = {pid: i + 1 for i, (pid, _, _) in enumerate(PAGES)}
-
-banks = []
-# Master FIRST: opening the module lands on the master page, not on a drum —
-# 9W9 shipped drum-first and Gus called it out.
-# NO "global" flag on this bank, though 8W8's shape (which this emission was
-# copied from) carried one. In Movy, bank.global defaults every slot in the
-# bank to NON-AUTOMATABLE (config-pages.ts: `slot.automatable ?? (bank.global
-# ? false : ...)`) — so the flag silently made Volume, Comp, Velocity and the
-# master drive un-automatable. Found on 6W6, confirmed on 8W8 (fixed in its
-# v1.1.2), and it had been copied here too.
-banks.append({"name": "Master", "pad": 15,
-              "rows": [[movy_slot(p) for p in GLOBALS] + [None] * (8 - len(GLOBALS))]})
-for pid, label, params in PAGES:
-    full = params + PAGE_SENDS[pid]
-    row = [movy_slot(p) for p in full] + [None] * (8 - len(full))
-    banks.append({"name": MOVY_NAME[pid], "pad": PAD_OF_LEVEL[pid], "rows": [row]})
-for pid, label, params in RHYTHM_PAGES:
-    row = [movy_slot(p) for p in params] + [None] * (8 - len(params))
-    banks.append({"name": label, "rows": [row]})
-for pid, label, params in FX_PAGES:
-    row = [movy_slot(p) for p in params] + [None] * (8 - len(params))
-    bank = {"name": label, "rows": [row]}
-    if pid == "rev":
-        bank["pad"] = 16
-    banks.append(bank)
-movy = {"id": "cw78", "name": "CW-78",
-        # padCount is 16, NOT the fourteen voices: Movy resolves a pad number
-        # only up to padCount (drumPadOfPhys returns -1 past it), so at 14 the
-        # Main and FX pads mapped below would resolve to nothing and be
-        # jog-only. Pads 15/16 send notes 50/51, which the DSP's drum-rack map
-        # answers with silence — a page turn and no sound, same as the device.
-        # (padFollowLock briefly lived here; Dima dropped the lock from Movy
-        # PR #16 — Shift+jog-click is spoken for — so the field is ignored.)
-        "drum": {"padCount": 16, "padNoteStart": 36, "rawMidi": False},
-        "banks": banks}
-(root_dir / "src/movy_config.json").write_text(json.dumps(movy, indent=2) + "\n")
 
 print(f"chain_params {len(cpj)}B  ui_pages {len(uhj)}B  "
-      f"(host buffer {HOST_PARAM_MAX}B)  movy banks={len(banks)}  "
+      f"(host buffer {HOST_PARAM_MAX}B)  "
       f"pages={len(levels)}  pots={len(pots)}  enums={len(enums)}  "
       f"params={len(cp)}")

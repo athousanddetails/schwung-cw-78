@@ -328,6 +328,20 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+step "the voices contract holds in both note maps"
+# Schwung 0.13: pad_layout plus a note per voice, asserted against the blobs
+# the header actually ships rather than what the generator meant. Both failures
+# this guards against happened in 9W9 and neither raised an error: a positional
+# note map, and a level_of[] naming pages that are not emitted — which stopped
+# four of eleven voices following the pad, silently, for months.
+if have python3; then
+  python3 tools/voices_check.py >>"$log" 2>&1
+  verdict $?
+else
+  skip "no python3"
+fi
+
+# ---------------------------------------------------------------------------
 step "every control actually does something"
 # The gap the rest of this suite left open: a knob wired to nothing passes
 # every other check here. It resolves, stores, round-trips and draws — it just

@@ -242,7 +242,8 @@ int main(int argc, char **argv)
            "chain_params qualifies its names for the picker", NULL);
 
         const int m = api->get_param(inst, "ui_pages", buf, sizeof(buf));
-        ok(m == CR78_UI_PAGES_LEN, "ui_pages length", NULL);
+        { char d[64]; snprintf(d, sizeof d, "got %d want %d", m, CR78_UI_PAGES_LEN);
+          ok(m == CR78_UI_PAGES_LEN, "ui_pages length", d); }
         ok(m > 0 && buf[0] == '{', "ui_pages is an object", NULL);
 
         /* ui_hierarchy must be SERVED AND EMPTY — length 0, not an error.

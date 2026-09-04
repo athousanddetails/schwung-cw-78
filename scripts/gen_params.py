@@ -507,12 +507,55 @@ for pid, label, params in RHYTHM_PAGES:
     for p in params:
         register(p)
 
+# ---- Schwung 0.13's voices contract --------------------------------------
+#
+# Declare that this surface is a drum rack and which note each VOICE plays, so
+# the host can lay out pads and follow the voice being edited without keeping a
+# per-module table. Additive: a pre-0.13 host ignores all of it, and nothing
+# about our own editor changes — it rides ui_pages, which ui_chain.js already
+# feeds to the shared controller.
+#
+# KEYED BY LEVEL ID, NEVER BY POSITION. 9W9 lost four of eleven voices to a
+# positional map, because its nav order, trigger enum and note numbers disagree
+# about where the hats and cymbals sit. CW-78's three orders happen to agree —
+# the enum is bd..mb, kLevelOf is the same, and the rack is 36+index with no
+# transpositions — but "happens to agree today" is not a thing to build on, and
+# a dict costs nothing.
+#
+# A LEVEL THAT MAKES NO SOUND IS NOT A VOICE. The rhythm page, the two send
+# buses and Main get no note: a pad on any of them would play nothing. That is
+# fourteen notes for fourteen voices, and the check asserts the count.
+DRUM_NOTE = {pid: 36 + i for i, (pid, _, _) in enumerate(PAGES)}
+
+# General MIDI, one canonical note per voice. The runtime GM map in the plugin
+# is many-to-one — CW-78 has ONE hi-hat and ONE conga, so GM's closed/pedal/open
+# hats and its three congas all land on the same voice — and a contract needs
+# exactly one note per voice, so this names the one a host should place.
+GM_NOTE = {
+    "bd": 36,   # Bass Drum 1
+    "sd": 38,   # Acoustic Snare
+    "rs": 37,   # Side Stick
+    "hh": 42,   # Closed Hi-Hat — the machine's only hat
+    "cy": 49,   # Crash Cymbal 1
+    "ma": 70,   # Maracas
+    "cl": 75,   # Claves
+    "hb": 60,   # Hi Bongo
+    "lb": 61,   # Low Bongo
+    "lc": 64,   # Low Conga — the voice IS the low one, so not 62/63
+    "cb": 56,   # Cowbell
+    "tb": 54,   # Tambourine
+    "gu": 73,   # Short Guiro
+    "mb": 80,   # Mute Triangle — no GM metallic beat exists; nearest bright tick
+}
+
 # Now the pages, which may reference anything registered above.
 for pid, label, params in PAGES:
     full = params + PAGE_SENDS[pid]
     if len(full) > 8:
         raise SystemExit(f"page {pid} has {len(full)} params — max 8 knobs")
     levels[pid] = {"name": label,
+                   "note": DRUM_NOTE[pid],
+                   "role": "drum",
                    "knobs": [p["key"] for p in full],
                    "params": [{"key": p["key"], "label": p["name"]}
                               for p in full]}
@@ -567,7 +610,22 @@ if _clash:
                      + "; ".join(f"{n!r} <- {', '.join(k)}" for n, k in _clash.items()))
 
 cpj = json.dumps(cp, separators=(",", ":"))
-uhj = json.dumps({"levels": levels}, separators=(",", ":"))
+# TWO hierarchies, because the note map is switchable at runtime. One static
+# declaration would be wrong half the time, and a host laying pads out from it
+# would place every voice wrongly with nothing on screen to say why. The plugin
+# picks between them in get_param — a pointer choice, nothing built on the
+# audio thread; the cost is a second copy of the JSON in flash.
+def _hierarchy(note_of):
+    import copy
+    lv = copy.deepcopy(levels)
+    for pid in note_of:
+        lv[pid]["note"] = note_of[pid]
+    return json.dumps({"pad_layout": "drums",
+                       "focus_param": "ui_focus_level",
+                       "levels": lv}, separators=(",", ":"))
+
+uhj   = _hierarchy(DRUM_NOTE)
+uhjgm = _hierarchy(GM_NOTE)
 
 # ---- the host's parameter channel ------------------------------------------
 #
@@ -653,11 +711,17 @@ static const char cr78_chain_params_json[] =
 static const char cr78_ui_pages_json[] =
 {cstr(uhj)};
 
+/* The same hierarchy with General MIDI notes, for when note_map is GM. The
+ * plugin picks between the two in get_param on "ui_pages". */
+#define CR78_UI_PAGES_GM_LEN {len(uhjgm)}
+static const char cr78_ui_pages_gm_json[] =
+{cstr(uhjgm)};
+
 #endif /* CR78_PARAMS_H */
 """)
 
 
-print(f"chain_params {len(cpj)}B  ui_pages {len(uhj)}B  "
+print(f"chain_params {len(cpj)}B  ui_pages {len(uhj)}B/{len(uhjgm)}B(gm)  "
       f"(host buffer {HOST_PARAM_MAX}B)  "
       f"pages={len(levels)}  pots={len(pots)}  enums={len(enums)}  "
       f"params={len(cp)}")

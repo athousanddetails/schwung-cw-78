@@ -390,9 +390,17 @@ static int get_param(void *_instance, const char *_key, char *_buf, const int _l
      * ui_chain.js to feed the shared param_pages controller. */
     if(!strcmp(_key, "ui_pages"))
     {
-        if(_len <= CR78_UI_PAGES_LEN) return -1;
-        memcpy(_buf, cr78_ui_pages_json, CR78_UI_PAGES_LEN + 1);
-        return CR78_UI_PAGES_LEN;
+        /* The hierarchy carries Schwung 0.13's voices contract — pad_layout
+         * and a note per voice — and the note map is switchable at runtime, so
+         * one static answer would be wrong half the time and a host would lay
+         * every pad out in the wrong place with nothing to say why. Two blobs,
+         * a pointer choice between them; nothing is built here. */
+        const int gm = (g_note_map != 0);
+        const char *const j = gm ? cr78_ui_pages_gm_json : cr78_ui_pages_json;
+        const int n = gm ? CR78_UI_PAGES_GM_LEN : CR78_UI_PAGES_LEN;
+        if(_len <= n) return -1;
+        memcpy(_buf, j, (size_t)n + 1);
+        return n;
     }
 
     /*

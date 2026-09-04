@@ -8,7 +8,7 @@
  * Structure follows 8W8's sc808_plugin.cpp, which follows 6W6's, which
  * follows 9W9's er99_plugin.c, on purpose: the kits should feel identical
  * under the hands, so the pad map, silent-select window, per-lane mutes,
- * pad-follow and step sequencer are the same mechanisms with a CR-78 roster.
+ * pad-follow is the same mechanism with a CR-78 roster.
  * GPL-3.0.
  */
 #include <math.h>
@@ -69,22 +69,12 @@ typedef struct {
      * a time and a write is not free. */
     float           last_bpm;
 
-    /* ---- Per-voice step sequencer ----
-     * 14 lanes x 16 steps, clocked from host get_beat_position() so it phase-
-     * locks to whatever transport is running and stays drift-free. Step input
-     * arrives as notes 16-31 through the patch's capture rules — the
-     * Schwung-supported path, no core patching. */
-    uint16_t        seq[CR78_NUM_VOICES];
-    int             seq_voice;
-    int             seq_last_step;
-
     /* Which bus page the FX pad shows next: 0 = Reverb, 1 = Delay. */
     int             fx_flip;
 
     /* ---- Preset rhythm playback ----
      * The CR-78's own patterns, on the machine's own 48-steps-to-the-bar
-     * clock. Independent of the step sequencer above: both can run, and with
-     * Mode off this fires nothing at all.
+     * clock. With Mode off this fires nothing at all.
      *
      * Two clocks: phase-locked to the transport when it runs, free-running at
      * the host tempo when it does not — see the block in render_block. */
@@ -229,8 +219,6 @@ static void *create_instance(const char *_module_dir, const char *_json_defaults
         (int)sr, _json_defaults ? "yes" : "none");
     inst->engine = cr78_create(sr);
     if(!inst->engine) { free(inst); return NULL; }
-    inst->seq_voice = 0;
-    inst->seq_last_step = -1;
     inst->rhy_last_step = -1;
     inst->rhy_prev_mode = 0;
     inst->rhy_free_samps = -1.0;
@@ -266,18 +254,6 @@ static void on_midi(void *_instance, const uint8_t *_msg, const int _len, const 
 
     /* Drums are one-shots: note-off is ignored, note-on with velocity 0 too. */
     if(status != 0x90 || vel == 0) return;
-
-    /* Step buttons (notes 16-31): toggle the selected lane's step. These only
-     * arrive while the patch's capture rules are active (slot focused), so
-     * outside our editor the steps stay Move's. Internal surface only —
-     * external gear sending 16-31 must not rewrite patterns. */
-    if(note >= 16 && note <= 31 && _source == 0)
-    {
-        const int v = inst->seq_voice;
-        if(v >= 0 && v < CR78_NUM_VOICES)
-            inst->seq[v] ^= (uint16_t)(1u << (note - 16));
-        return;
-    }
 
     const int v = note_to_voice(note);
 
@@ -354,18 +330,6 @@ static void set_param(void *_instance, const char *_key, const char *_val)
         cr78_set_mutes(inst->engine, (unsigned)atoi(_val));
         return;
     }
-    if(!strcmp(_key, "seq_voice"))
-    {
-        const int v = atoi(_val);
-        if(v >= 0 && v < CR78_NUM_VOICES) inst->seq_voice = v;
-        return;
-    }
-    if(!strncmp(_key, "seq_", 4))
-    {
-        for(int v = 0; v < CR78_NUM_VOICES; ++v)
-            if(!strcmp(_key + 4, kLevelOf[v]))
-            { inst->seq[v] = (uint16_t)(atoi(_val) & 0xFFFF); return; }
-    }
     /* Slot autosave and preset recall both arrive here. */
     if(!strcmp(_key, "state"))
     {
@@ -378,23 +342,10 @@ static void set_param(void *_instance, const char *_key, const char *_val)
             if(cr78_get_param(inst->engine, "note_map", b, sizeof(b)) > 0)
                 g_note_map = atoi(b) != 0;
         }
-        /* Plugin-level keys (sequencer lanes) piggyback on the same blob as a
-         * "key=value;" tail after the JSON. */
-        const char *q = _val;
-        while((q = strstr(q, "seq_")) != NULL)
-        {
-            char kbuf[24];
-            const char *eq = strchr(q, '=');
-            const char *semi = strchr(q, ';');
-            if(!eq || (semi && semi < eq)) { q += 4; continue; }
-            const size_t kl = (size_t)(eq - q);
-            if(kl < sizeof(kbuf))
-            {
-                memcpy(kbuf, q, kl); kbuf[kl] = '\0';
-                set_param(_instance, kbuf, eq + 1);
-            }
-            q = eq + 1;
-        }
+        /* A patch written before the sequencer was removed still carries a
+         * "seq_<lane>=<mask>;" tail after the JSON. cr78_deserialize reads the
+         * JSON and stops, so those keys are simply ignored and an old preset
+         * loads exactly as it should. */
         return;
     }
     cr78_set_param(inst->engine, _key, _val);
@@ -478,24 +429,9 @@ static int get_param(void *_instance, const char *_key, char *_buf, const int _l
     }
     if(!strcmp(_key, "mutes"))
         return snprintf(_buf, (size_t)_len, "%u", cr78_get_mutes(inst->engine));
-    if(!strcmp(_key, "seq_voice"))
-        return snprintf(_buf, (size_t)_len, "%d", inst->seq_voice);
-    if(!strcmp(_key, "seq_pos"))
-        return snprintf(_buf, (size_t)_len, "%d", inst->seq_last_step);
-    if(!strncmp(_key, "seq_", 4))
-    {
-        for(int v = 0; v < CR78_NUM_VOICES; ++v)
-            if(!strcmp(_key + 4, kLevelOf[v]))
-                return snprintf(_buf, (size_t)_len, "%u", (unsigned)inst->seq[v]);
-    }
     if(!strcmp(_key, "state"))
     {
-        int n = cr78_serialize(inst->engine, _buf, _len);
-        if(n < 0) return n;
-        for(int v = 0; v < CR78_NUM_VOICES && n < _len - 1; ++v)
-            n += snprintf(_buf + n, (size_t)(_len - n), "seq_%s=%u;",
-                          kLevelOf[v], (unsigned)inst->seq[v]);
-        return n < _len ? n : _len - 1;
+        return cr78_serialize(inst->engine, _buf, _len);
     }
 
     return cr78_get_param(inst->engine, _key, _buf, _len);
@@ -524,28 +460,6 @@ static void render_block(void *_instance, int16_t *_out_lr, const int _frames)
             char b[24];
             snprintf(b, sizeof(b), "%.4f", bpm);
             cr78_set_param(inst->engine, "dly_bpm", b);
-        }
-    }
-
-    /* Advance the step sequencer. get_beat_position() < 0 or absent means no
-     * transport — the sequencer idles and re-arms. 16th notes over one bar. */
-    if(g_host && g_host->get_beat_position)
-    {
-        const double bp = g_host->get_beat_position();
-        if(bp >= 0.0)
-        {
-            const int step = (int)floor(bp * 4.0) % 16;
-            if(step != inst->seq_last_step)
-            {
-                inst->seq_last_step = step;
-                for(int v = 0; v < CR78_NUM_VOICES; ++v)
-                    if(inst->seq[v] & (1u << step))
-                        cr78_trigger(inst->engine, v, 100);
-            }
-        }
-        else
-        {
-            inst->seq_last_step = -1;
         }
     }
 

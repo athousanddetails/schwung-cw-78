@@ -106,7 +106,10 @@ sound and not only a louder one.
   **Mute+knob** resets a pot to its factory default.
 - **Sequencing:** use Move's own sequencer — a drum track with a kit, track
   volume down, track MIDI OUT on the slot's channel. Each drum is its own lane.
-  Note map: drum rack (36–49, default) or General MIDI, switchable.
+  Note map: drum rack (36–49, default) or General MIDI, switchable. There is
+  **no sequencer inside the module**: CW-78 makes the sounds, Move arranges
+  them. (The CR-78's own preset rhythms are a different thing — they are the
+  machine's, not a step editor, and they live on the Rhythm page.)
 
 ## Remote panel
 

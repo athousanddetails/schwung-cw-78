@@ -34,7 +34,6 @@ import { createController } from '/data/UserData/schwung/shared/param_pages/page
 import { decodeInput, applyInput } from '/data/UserData/schwung/shared/param_pages/page_input.mjs';
 import { PAGE_KNOBS, PAGE_MENU } from '/data/UserData/schwung/shared/param_pages/page_plan.mjs';
 import { LAYOUT_MOVY } from '/data/UserData/schwung/shared/param_pages/render_page_movy.mjs';
-import { setLED } from '/data/UserData/schwung/shared/input_filter.mjs';
 
 (function () {
     "use strict";
@@ -107,30 +106,6 @@ import { setLED } from '/data/UserData/schwung/shared/input_filter.mjs';
 
     /* Fourteen lanes, fourteen bits. */
     var LANE_MASK = 0x3FFF;
-
-    /*
-     * The two page pads glow while the editor is active — Main white, FX
-     * azure — because Move will not light them: its own pad LEDs come from
-     * the selected track's rack cells, and cells 15/16 hold no drum, so the
-     * two most useful pads on the block sat dark and read as dead.
-     *
-     * setLED (input_filter.mjs) writes a note-on toward the SURFACE through
-     * the shadow UI's MIDI-out ring; its cache suppresses repeat writes, but
-     * Move repaints the grid behind our back (track switches, mode changes),
-     * so the colours are re-asserted with force on a slow tick. Deactivation
-     * paints them off rather than snapshot-restoring: the rack cells under
-     * them are empty, so "off" IS Move's own colour for those pads — and on
-     * the paths where our tick never gets to run again (slot switch to a
-     * module with its own editor) the shim's own LED replay cleans up.
-     */
-    var PAGE_PAD_COLORS = { 94: 120 /* white: Main */, 95: 16 /* azure: FX */ };
-    var pagePadsLit = false;
-    var pagePadTick = 0;
-
-    function paintPagePads(on, force) {
-        for (var n in PAGE_PAD_COLORS)
-            setLED(+n, on ? PAGE_PAD_COLORS[n] : 0, !!force);
-    }
 
     var mySlot = -1;
     var padBlocked = false;
@@ -299,14 +274,6 @@ import { setLED } from '/data/UserData/schwung/shared/input_filter.mjs';
         var shown = !has("shadow_get_display_mode") || shadow_get_display_mode() === 1;
         var active = shown && isFocused();
         setPadBlock(active);
-        if (active !== pagePadsLit) {
-            pagePadsLit = active;
-            paintPagePads(active, true);
-        } else if (active && (++pagePadTick % 60) === 0) {
-            /* Re-assert ~every two seconds: survives Move's own grid
-             * repaints, costs two packets. */
-            paintPagePads(true, true);
-        }
         if (!active || !controller) return;
 
         if (hintUntil && Date.now() >= hintUntil) dismissHint();
@@ -495,17 +462,12 @@ import { setLED } from '/data/UserData/schwung/shared/input_filter.mjs';
      * rung, Back from inside My Presets skips the whole page bar and leaves
      * the module. */
     function handleBack() {
-        if (!controller) { setPadBlock(false); pagePadsLit = false;
-                           paintPagePads(false, true); return false; }
+        if (!controller) { setPadBlock(false); return false; }
         if (controller.dismissHint && controller.dismissHint()) return true;
         if (controller.dismissPeek && controller.dismissPeek()) return true;
         if (controller.pickerOpen) { controller.closePicker(); return true; }
         if (controller.exitMenu && controller.exitMenu()) return true;
         setPadBlock(false);
-        /* The host stops ticking us after this, so the deactivate path in
-         * tick() never runs — go dark now or stay lit forever. */
-        pagePadsLit = false;
-        paintPagePads(false, true);
         return false;                          /* host exits the editor */
     }
 

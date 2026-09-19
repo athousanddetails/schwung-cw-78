@@ -342,6 +342,15 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+step "the custom editor supports Screen Reader"
+if have node; then
+  node tests/test_screen_reader_ui.mjs >>"$log" 2>&1
+  verdict $?
+else
+  skip "no node"
+fi
+
+# ---------------------------------------------------------------------------
 step "every control actually does something"
 # The gap the rest of this suite left open: a knob wired to nothing passes
 # every other check here. It resolves, stores, round-trips and draws — it just

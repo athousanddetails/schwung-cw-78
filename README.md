@@ -123,6 +123,16 @@ device, distortion selectors, the sends, both buses and Master. Open
 
 ![CW-78 remote panel](docs/img/remote-ui.png)
 
+## Accessibility
+
+CW-78 follows Schwung's Screen Reader setting. On hosts with the accessible
+parameter-list controller (Schwung 1.0+), enabling Screen Reader replaces the
+eight-cell knob grid with a jog-navigated list: click to enter a page, jog to
+choose a control, click to edit it, and jog to change its value. Page, control,
+enum and value announcements come from Schwung's shared parameter controller.
+CW-78 also announces its own Mute+Pad changes with the full voice name and the
+Main-page lock state.
+
 ## Install
 
 Requires Schwung **0.12.1 or newer**. Via the Schwung Module Store /

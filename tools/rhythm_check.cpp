@@ -121,6 +121,24 @@ int main(int argc, char **argv)
         printf("  ok    Style enum and the panel agree (%d buttons)\n",
                CR78_NUM_BUTTONS);
 
+    const int slot2 = find_enum_slot("rhy_style2");
+    if(slot2 < 0)
+    {
+        printf("FAIL  no rhy_style2 enum in the generated table\n");
+        ++bad;
+    }
+    else if(slot2 != CR78_NUM_ENUMS - 1 ||
+            g_cr78_enums[slot2].count != CR78_NUM_BUTTONS + 1 ||
+            g_cr78_enums[slot2].def != 0)
+    {
+        printf("FAIL  Rhythm 2 must be append-only, Off + %d buttons, default Off\n",
+               CR78_NUM_BUTTONS);
+        ++bad;
+    }
+    else
+        printf("  ok    Rhythm 2 is appended, Off + %d buttons, and defaults Off\n",
+               CR78_NUM_BUTTONS);
+
     /* Every button must resolve to a real pattern on both lever positions,
      * and between them the seventeen buttons must reach ALL twenty patterns —
      * a pattern no button can select is one nobody can ever play. */
@@ -149,6 +167,31 @@ int main(int argc, char **argv)
         if(!unreachable)
             printf("  ok    all %d patterns reachable from %d buttons "
                    "(%d dual)\n", CR78_NUM_RHYTHMS, CR78_NUM_BUTTONS, dual);
+    }
+
+    /* Every pair must be a logic OR. This proves shared hits are not doubled,
+     * every voice from either pattern survives, and either accent line lifts
+     * the combined step. */
+    {
+        int comboBad = 0;
+        for(int a = 0; a < CR78_NUM_RHYTHMS; ++a)
+            for(int b = 0; b < CR78_NUM_RHYTHMS; ++b)
+                for(int tick = 0; tick < 144; ++tick) /* lcm(36,48) */
+                {
+                    int aa = 0, ba = 0, ca = 0;
+                    const unsigned am = cr78_rhythm_step_mask(&g_cr78_rhythms[a], 0,
+                                                               tick, &aa);
+                    const unsigned bm = cr78_rhythm_step_mask(&g_cr78_rhythms[b], 0,
+                                                               tick, &ba);
+                    unsigned cm = cr78_rhythm_step_mask(&g_cr78_rhythms[a], 0,
+                                                        tick, &ca);
+                    cm |= cr78_rhythm_step_mask(&g_cr78_rhythms[b], 0, tick, &ca);
+                    if(cm != (am | bm) || ca != (aa || ba)) ++comboBad;
+                }
+        if(comboBad)
+        { printf("FAIL  %d combined rhythm steps are not a logic OR\n", comboBad); bad += comboBad; }
+        else
+            printf("  ok    all pattern pairs combine as trigger/accent ORs\n");
     }
 
     /* ---- every hit is in range ---- */

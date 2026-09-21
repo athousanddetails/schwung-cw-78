@@ -517,6 +517,41 @@ int main(int argc, char **argv)
         api->get_param(inst, "rhy_style", b, sizeof b);
         ok(atoi(b) == 12, "Style reads back", b);
         api->set_param(inst, "rhy_style", "default");
+
+        /* A v1.4 state blob ends before the appended Rhythm 2 enum. Loading
+         * one after a combination must switch the second selector back Off,
+         * not leak the current instance's extra pattern into the old preset. */
+        api->set_param(inst, "rhy_style2", "8");
+        api->set_param(inst, "state",
+            "{\"v\":1,\"pots\":[],\"enums\":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,11],\"mutes\":0}");
+        api->get_param(inst, "rhy_style2", b, sizeof b);
+        ok(atoi(b) == 0, "a v1.4 preset leaves Rhythm 2 Off", b);
+
+        /* The second selector must reach the REAL plugin clock loop, not only
+         * resolve as a generated enum. Rock 1 contains no maracas; Bossa does
+         * on tick zero. Solo the maracas and prove adding Bossa as Rhythm 2
+         * makes that otherwise-silent step sound. */
+        fresh(api, &inst);
+        api->set_param(inst, "mutes", "16351"); /* 0x3fff except MA bit 5 */
+        api->set_param(inst, "rhy_style", "11"); /* Rock 1 */
+        api->set_param(inst, "rhy_style2", "0");
+        api->set_param(inst, "rhy_mode", "1");
+        g_clock = MOVE_CLOCK_STATUS_RUNNING;
+        g_beat = 0.0;
+        const int rockMa = render_peak(api, inst, 30);
+
+        fresh(api, &inst);
+        api->set_param(inst, "mutes", "16351");
+        api->set_param(inst, "rhy_style", "11");
+        api->set_param(inst, "rhy_style2", "8");  /* Bossa: button 7 + Off */
+        api->set_param(inst, "rhy_mode", "1");
+        g_beat = 0.0;
+        const int comboMa = render_peak(api, inst, 30);
+        { char d[64]; snprintf(d, sizeof d, "Rock %d, +Bossa %d", rockMa, comboMa);
+          ok(rockMa == 0 && comboMa > 0,
+             "Rhythm 2 contributes its own triggers", d); }
+        g_clock = MOVE_CLOCK_STATUS_STOPPED;
+        g_beat = -1.0;
     }
 
     /* ---- 13. free-running metal oscillators ----

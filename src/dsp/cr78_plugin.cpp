@@ -482,9 +482,10 @@ static void render_block(void *_instance, int16_t *_out_lr, const int _frames)
      */
     {
         char b[16];
-        int mode = 0, button = 0, ab = 0;
+        int mode = 0, button = 0, button2 = 0, ab = 0;
         if(cr78_get_param(inst->engine, "rhy_mode",  b, sizeof b) > 0) mode   = atoi(b);
         if(cr78_get_param(inst->engine, "rhy_style", b, sizeof b) > 0) button = atoi(b);
+        if(cr78_get_param(inst->engine, "rhy_style2",b, sizeof b) > 0) button2= atoi(b);
         if(cr78_get_param(inst->engine, "rhy_ab",    b, sizeof b) > 0) ab     = atoi(b);
         /*
          * Style is a BUTTON, not a pattern, and the lever works on ALL
@@ -497,8 +498,15 @@ static void render_block(void *_instance, int16_t *_out_lr, const int _frames)
          * An earlier version had the lever dead on single buttons and picking
          * a measure of the wrong pattern on dual ones.
          */
-        const int style   = cr78_resolve_pattern(button, ab);
-        const int measure = cr78_button_is_dual(button) ? 0 : ab;
+        const int style    = cr78_resolve_pattern(button, ab);
+        const int measure  = cr78_button_is_dual(button) ? 0 : ab;
+        /* Rhythm 2 stores Off at zero and panel buttons at 1..17. The A/B
+         * lever is global on the hardware, so it resolves both selectors. */
+        const int secondButton = button2 - 1;
+        const int style2 = secondButton >= 0
+                         ? cr78_resolve_pattern(secondButton, ab) : -1;
+        const int measure2 = secondButton >= 0 && !cr78_button_is_dual(secondButton)
+                           ? ab : 0;
 
         /* A mode flip re-arms the stepper so Play always begins cleanly. */
         if(mode != inst->rhy_prev_mode)
@@ -535,7 +543,6 @@ static void render_block(void *_instance, int16_t *_out_lr, const int _frames)
         if(mode > 0 && rclock == MOVE_CLOCK_STATUS_RUNNING)
         {
             const cr78_rhythm_t *r = &g_cr78_rhythms[style];
-            const int spb = r->stepsPerBar;
 
             const float bpm = (g_host && g_host->get_bpm && g_host->get_bpm() > 20.0f)
                             ? g_host->get_bpm() : 120.0f;
@@ -556,27 +563,23 @@ static void render_block(void *_instance, int16_t *_out_lr, const int _frames)
             else
                 inst->rhy_free_samps += (double)_frames;
 
-            int step = (int)(inst->rhy_free_samps / sampsPerTick) % spb;
-            if(step < 0) step += spb;
+            /* Keep an absolute tick. Each selected rhythm takes its own
+             * modulo, so a 3/4 waltz can combine with a 4/4 pattern without
+             * either one resetting or stretching the other. */
+            const int tick = (int)(inst->rhy_free_samps / sampsPerTick);
 
-            if(step != inst->rhy_last_step)
+            if(tick != inst->rhy_last_step)
             {
-                inst->rhy_last_step = step;
-                const cr78_hit_t    *hits = measure ? r->b    : r->a;
-                const int            n    = measure ? r->bN   : r->aN;
-                const unsigned char *acc  = measure ? r->bAcc : r->aAcc;
-                const int            accN = measure ? r->bAccN: r->aAccN;
-
-                /* Accent is a per-STEP channel — one CV into the BA662 that
-                 * lifts whatever happens to be sounding. */
+                inst->rhy_last_step = tick;
                 int accented = 0;
-                for(int i = 0; i < accN; ++i)
-                    if((int)acc[i] == step) { accented = 1; break; }
+                unsigned fire = cr78_rhythm_step_mask(r, measure, tick, &accented);
+                if(style2 >= 0)
+                    fire |= cr78_rhythm_step_mask(&g_cr78_rhythms[style2],
+                                                  measure2, tick, &accented);
                 const int vel = accented ? 127 : 88;
-
-                for(int i = 0; i < n; ++i)
-                    if((int)hits[i].step == step)
-                        cr78_trigger(inst->engine, (int)hits[i].voice, vel);
+                for(int voice = 0; voice < CR78_NUM_VOICES; ++voice)
+                    if(fire & (1u << voice))
+                        cr78_trigger(inst->engine, voice, vel);
             }
         }
         else

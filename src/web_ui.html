@@ -748,8 +748,23 @@
       b.title = d.dual ? "Two rhythms — the RHYTHM A/B lever picks between them"
                        : d.t[0];
       b.addEventListener("click", function () {
-        send("rhy_style", i);
-        send("rhy_mode", 1);
+        var on = (state["rhy_mode"] | 0) === 1;
+        var first = state["rhy_style"] | 0;
+        var second = (state["rhy_style2"] | 0) - 1;
+        if (!on) {
+          send("rhy_style", i);
+          send("rhy_style2", 0);
+          send("rhy_mode", 1);
+        } else if (i === second) {
+          send("rhy_style2", 0);             /* lift the second button */
+        } else if (i === first) {
+          if (second >= 0) {                  /* lift first; keep second down */
+            send("rhy_style", second);
+            send("rhy_style2", 0);
+          }
+        } else {
+          send("rhy_style2", i + 1);         /* press a second button */
+        }
       });
       parent.appendChild(b);
       btnEls[i] = b;
@@ -759,7 +774,9 @@
       var b = document.createElement("div");
       b.className = "rbtn red"; b.textContent = "CANCEL";
       b.title = "Stop the preset rhythm (Mode = Off)";
-      b.addEventListener("click", function () { send("rhy_mode", 0); });
+      b.addEventListener("click", function () {
+        send("rhy_mode", 0); send("rhy_style2", 0);
+      });
       parent.appendChild(b);
       return b;
     }
@@ -797,10 +814,11 @@
     function paint() {
       var on  = (state["rhy_mode"]  | 0) === 1;
       var cur = state["rhy_style"] | 0;
+      var cur2 = (state["rhy_style2"] | 0) - 1;
       var ab  = (state["rhy_ab"] | 0) ? 1 : 0;
       btnEls.forEach(function (b, i) {
         if (!b) return;
-        b.classList.toggle("on", on && i === cur);
+        b.classList.toggle("on", on && (i === cur || i === cur2));
         /* A dual cap shows which of its two rhythms the lever has selected. */
         var d = RHY_BTN[i];
         if (d.dual)
@@ -818,6 +836,7 @@
     }
     addWidget("rhy_mode",  paint);
     addWidget("rhy_style", paint);
+    addWidget("rhy_style2",paint);
     addWidget("rhy_ab",    paint);
     paint();
   }

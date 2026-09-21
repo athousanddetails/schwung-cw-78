@@ -223,6 +223,7 @@ static const Excuse kExcused[] = {
     { "note_map", "maps MIDI notes to lanes in the plugin — changes WHICH voice a note plays, not how any voice sounds" },
     { "rhy_mode",  "rhythm playback lives in the plugin's block loop, not the engine" },
     { "rhy_style", "as rhy_mode" },
+    { "rhy_style2","as rhy_mode" },
     { "rhy_ab",    "as rhy_mode" },
 };
 static const char *excuse_for(const char *key)

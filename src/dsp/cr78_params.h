@@ -26,7 +26,7 @@ typedef struct {
 } cr78_enum_t;
 
 #define CR78_NUM_POTS  96
-#define CR78_NUM_ENUMS 21
+#define CR78_NUM_ENUMS 22
 
 static const cr78_pot_t g_cr78_pots[CR78_NUM_POTS] = {
     { "bd_tune",   -12.0000f,    12.0000f, CR78_LIN,  64 },
@@ -149,9 +149,10 @@ static const cr78_enum_t g_cr78_enums[CR78_NUM_ENUMS] = {
     { "rhy_mode",  2,  0 },
     { "rhy_ab",  2,  0 },
     { "rhy_style", 17, 11 },
+    { "rhy_style2", 18,  0 },
 };
 
-#define CR78_CHAIN_PARAMS_LEN 10875
+#define CR78_CHAIN_PARAMS_LEN 11107
 static const char cr78_chain_params_json[] =
     "[{\"key\":\"bd_tune\",\"name\":\"BD Tune\",\"type\":\"int\",\"min\":0,\"max\":127,\"default\":64},{\"key\":\"bd_decay\",\"n"
     "ame\":\"BD Decay\",\"type\":\"int\",\"min\":0,\"max\":127,\"default\":44},{\"key\":\"bd_drive\",\"name\":\"BD Drive\",\"ty"
@@ -258,12 +259,15 @@ static const char cr78_chain_params_json[] =
     "n\":0,\"max\":127,\"default\":62},{\"key\":\"dly_level\",\"name\":\"DLY Level\",\"type\":\"int\",\"min\":0,\"max\":127,\"d"
     "efault\":85,\"viz\":{\"kind\":\"fader\"}},{\"key\":\"rhy_mode\",\"name\":\"RHY Mode\",\"type\":\"enum\",\"options\":[\"Off"
     "\",\"Play\"],\"default\":0},{\"key\":\"rhy_ab\",\"name\":\"RHY A/B\",\"type\":\"enum\",\"options\":[\"A\",\"B\"],\"default\":"
-    "0},{\"key\":\"rhy_style\",\"name\":\"RHY Style\",\"type\":\"enum\",\"options\":[\"Waltz\",\"Shufl\",\"SloRck\",\"Swing\",\""
-    "FoxTng\",\"Boogie\",\"Enka\",\"Bossa\",\"Samba\",\"MamCha\",\"BegRhu\",\"Rock1\",\"Rock2\",\"Rock3\",\"Rock4\",\"Disco1\",\""
-    "Disco2\"],\"default\":11},{\"key\":\"ui_focus\",\"name\":\"Focus\",\"type\":\"int\",\"min\":0,\"max\":16,\"default\":0},{"
-    "\"key\":\"mutes\",\"name\":\"Mutes\",\"type\":\"int\",\"min\":0,\"max\":16383,\"default\":0}]";
+    "0},{\"key\":\"rhy_style\",\"name\":\"RHY Rhythm 1\",\"type\":\"enum\",\"options\":[\"Waltz\",\"Shufl\",\"SloRck\",\"Swing"
+    "\",\"FoxTng\",\"Boogie\",\"Enka\",\"Bossa\",\"Samba\",\"MamCha\",\"BegRhu\",\"Rock1\",\"Rock2\",\"Rock3\",\"Rock4\",\"Disco1"
+    "\",\"Disco2\"],\"default\":11},{\"key\":\"rhy_style2\",\"name\":\"RHY Rhythm 2\",\"type\":\"enum\",\"options\":[\"Off\",\""
+    "Waltz\",\"Shufl\",\"SloRck\",\"Swing\",\"FoxTng\",\"Boogie\",\"Enka\",\"Bossa\",\"Samba\",\"MamCha\",\"BegRhu\",\"Rock1\",\""
+    "Rock2\",\"Rock3\",\"Rock4\",\"Disco1\",\"Disco2\"],\"default\":0},{\"key\":\"ui_focus\",\"name\":\"Focus\",\"type\":\"int\""
+    ",\"min\":0,\"max\":16,\"default\":0},{\"key\":\"mutes\",\"name\":\"Mutes\",\"type\":\"int\",\"min\":0,\"max\":16383,\"defau"
+    "lt\":0}]";
 
-#define CR78_UI_PAGES_LEN 7152
+#define CR78_UI_PAGES_LEN 7208
 static const char cr78_ui_pages_json[] =
     "{\"pad_layout\":\"drums\",\"focus_param\":\"ui_focus_level\",\"levels\":{\"bd\":{\"name\":\"Bass Drum\",\"note\":36,\"r"
     "ole\":\"drum\",\"knobs\":[\"bd_tune\",\"bd_decay\",\"bd_drive\",\"bd_dist_type\",\"bd_level\"],\"params\":[{\"key\":\"bd"
@@ -320,27 +324,28 @@ static const char cr78_ui_pages_json[] =
     "une\",\"mb_decay\",\"mb_drive\",\"mb_dist_type\",\"mb_level\",\"mb_rev\",\"mb_dly\"],\"params\":[{\"key\":\"mb_tune\",\""
     "label\":\"Tune\"},{\"key\":\"mb_decay\",\"label\":\"Decay\"},{\"key\":\"mb_drive\",\"label\":\"Drive\"},{\"key\":\"mb_dist"
     "_type\",\"label\":\"Distortion\"},{\"key\":\"mb_level\",\"label\":\"Level\"},{\"key\":\"mb_rev\",\"label\":\"Rev\"},{\"key"
-    "\":\"mb_dly\",\"label\":\"Dly\"}]},\"rhy\":{\"name\":\"Rhythm\",\"knobs\":[\"rhy_mode\",\"rhy_ab\",\"rhy_style\"],\"params"
-    "\":[{\"key\":\"rhy_mode\",\"label\":\"Mode\"},{\"key\":\"rhy_ab\",\"label\":\"A/B\"},{\"key\":\"rhy_style\",\"label\":\"Styl"
-    "e\"}]},\"rev\":{\"name\":\"Reverb\",\"knobs\":[\"rev_decay\",\"rev_tone\",\"rev_hpf\",\"rev_level\"],\"params\":[{\"key\""
-    ":\"rev_decay\",\"label\":\"Decay\"},{\"key\":\"rev_tone\",\"label\":\"Tone\"},{\"key\":\"rev_hpf\",\"label\":\"HPF\"},{\"ke"
-    "y\":\"rev_level\",\"label\":\"Level\"}]},\"dly\":{\"name\":\"Delay\",\"knobs\":[\"dly_time\",\"dly_fdbk\",\"dly_tone\",\"d"
-    "ly_hpf\",\"dly_level\"],\"params\":[{\"key\":\"dly_time\",\"label\":\"Time\"},{\"key\":\"dly_fdbk\",\"label\":\"Fdbk\"},{"
-    "\"key\":\"dly_tone\",\"label\":\"Tone\"},{\"key\":\"dly_hpf\",\"label\":\"HPF\"},{\"key\":\"dly_level\",\"label\":\"Level\"}"
-    "]},\"root\":{\"name\":\"CW-78\",\"knobs\":[\"master_dist\",\"master_drive\",\"comp\",\"volume\",\"vel_depth\",\"hat_cho"
-    "ke\"],\"params\":[{\"level\":\"bd\",\"label\":\"Bass Drum\"},{\"level\":\"sd\",\"label\":\"Snare\"},{\"level\":\"rs\",\"labe"
-    "l\":\"Rim Shot\"},{\"level\":\"hh\",\"label\":\"Hi-Hat\"},{\"level\":\"cy\",\"label\":\"Cymbal\"},{\"level\":\"ma\",\"label\""
-    ":\"Maracas\"},{\"level\":\"cl\",\"label\":\"Claves\"},{\"level\":\"hb\",\"label\":\"Hi Bongo\"},{\"level\":\"lb\",\"label\":"
-    "\"Low Bongo\"},{\"level\":\"lc\",\"label\":\"Low Conga\"},{\"level\":\"cb\",\"label\":\"Cowbell\"},{\"level\":\"tb\",\"labe"
-    "l\":\"Tambourine\"},{\"level\":\"gu\",\"label\":\"Guiro\"},{\"level\":\"mb\",\"label\":\"Metal Beat\"},{\"level\":\"rhy\",\""
-    "label\":\"Rhythm\"},{\"level\":\"rev\",\"label\":\"Reverb\"},{\"level\":\"dly\",\"label\":\"Delay\"},{\"key\":\"master_dis"
-    "t\",\"label\":\"Master Dist\"},{\"key\":\"master_drive\",\"label\":\"Master Drive\"},{\"key\":\"comp\",\"label\":\"Comp\""
-    "},{\"key\":\"volume\",\"label\":\"Volume\"},{\"key\":\"vel_depth\",\"label\":\"Velocity\"},{\"key\":\"note_map\",\"label\""
-    ":\"Note Map\"},{\"key\":\"hat_choke\",\"label\":\"Choke\"}]}}}";
+    "\":\"mb_dly\",\"label\":\"Dly\"}]},\"rhy\":{\"name\":\"Rhythm\",\"knobs\":[\"rhy_mode\",\"rhy_ab\",\"rhy_style\",\"rhy_sty"
+    "le2\"],\"params\":[{\"key\":\"rhy_mode\",\"label\":\"Mode\"},{\"key\":\"rhy_ab\",\"label\":\"A/B\"},{\"key\":\"rhy_style\","
+    "\"label\":\"Rhythm 1\"},{\"key\":\"rhy_style2\",\"label\":\"Rhythm 2\"}]},\"rev\":{\"name\":\"Reverb\",\"knobs\":[\"rev_d"
+    "ecay\",\"rev_tone\",\"rev_hpf\",\"rev_level\"],\"params\":[{\"key\":\"rev_decay\",\"label\":\"Decay\"},{\"key\":\"rev_to"
+    "ne\",\"label\":\"Tone\"},{\"key\":\"rev_hpf\",\"label\":\"HPF\"},{\"key\":\"rev_level\",\"label\":\"Level\"}]},\"dly\":{\"na"
+    "me\":\"Delay\",\"knobs\":[\"dly_time\",\"dly_fdbk\",\"dly_tone\",\"dly_hpf\",\"dly_level\"],\"params\":[{\"key\":\"dly_t"
+    "ime\",\"label\":\"Time\"},{\"key\":\"dly_fdbk\",\"label\":\"Fdbk\"},{\"key\":\"dly_tone\",\"label\":\"Tone\"},{\"key\":\"dly"
+    "_hpf\",\"label\":\"HPF\"},{\"key\":\"dly_level\",\"label\":\"Level\"}]},\"root\":{\"name\":\"CW-78\",\"knobs\":[\"master_d"
+    "ist\",\"master_drive\",\"comp\",\"volume\",\"vel_depth\",\"hat_choke\"],\"params\":[{\"level\":\"bd\",\"label\":\"Bass D"
+    "rum\"},{\"level\":\"sd\",\"label\":\"Snare\"},{\"level\":\"rs\",\"label\":\"Rim Shot\"},{\"level\":\"hh\",\"label\":\"Hi-Hat"
+    "\"},{\"level\":\"cy\",\"label\":\"Cymbal\"},{\"level\":\"ma\",\"label\":\"Maracas\"},{\"level\":\"cl\",\"label\":\"Claves\"},"
+    "{\"level\":\"hb\",\"label\":\"Hi Bongo\"},{\"level\":\"lb\",\"label\":\"Low Bongo\"},{\"level\":\"lc\",\"label\":\"Low Cong"
+    "a\"},{\"level\":\"cb\",\"label\":\"Cowbell\"},{\"level\":\"tb\",\"label\":\"Tambourine\"},{\"level\":\"gu\",\"label\":\"Guir"
+    "o\"},{\"level\":\"mb\",\"label\":\"Metal Beat\"},{\"level\":\"rhy\",\"label\":\"Rhythm\"},{\"level\":\"rev\",\"label\":\"Rev"
+    "erb\"},{\"level\":\"dly\",\"label\":\"Delay\"},{\"key\":\"master_dist\",\"label\":\"Master Dist\"},{\"key\":\"master_dri"
+    "ve\",\"label\":\"Master Drive\"},{\"key\":\"comp\",\"label\":\"Comp\"},{\"key\":\"volume\",\"label\":\"Volume\"},{\"key\":\""
+    "vel_depth\",\"label\":\"Velocity\"},{\"key\":\"note_map\",\"label\":\"Note Map\"},{\"key\":\"hat_choke\",\"label\":\"Cho"
+    "ke\"}]}}}";
 
 /* The same hierarchy with General MIDI notes, for when note_map is GM. The
  * plugin picks between the two in get_param on "ui_pages". */
-#define CR78_UI_PAGES_GM_LEN 7152
+#define CR78_UI_PAGES_GM_LEN 7208
 static const char cr78_ui_pages_gm_json[] =
     "{\"pad_layout\":\"drums\",\"focus_param\":\"ui_focus_level\",\"levels\":{\"bd\":{\"name\":\"Bass Drum\",\"note\":36,\"r"
     "ole\":\"drum\",\"knobs\":[\"bd_tune\",\"bd_decay\",\"bd_drive\",\"bd_dist_type\",\"bd_level\"],\"params\":[{\"key\":\"bd"
@@ -397,22 +402,23 @@ static const char cr78_ui_pages_gm_json[] =
     "une\",\"mb_decay\",\"mb_drive\",\"mb_dist_type\",\"mb_level\",\"mb_rev\",\"mb_dly\"],\"params\":[{\"key\":\"mb_tune\",\""
     "label\":\"Tune\"},{\"key\":\"mb_decay\",\"label\":\"Decay\"},{\"key\":\"mb_drive\",\"label\":\"Drive\"},{\"key\":\"mb_dist"
     "_type\",\"label\":\"Distortion\"},{\"key\":\"mb_level\",\"label\":\"Level\"},{\"key\":\"mb_rev\",\"label\":\"Rev\"},{\"key"
-    "\":\"mb_dly\",\"label\":\"Dly\"}]},\"rhy\":{\"name\":\"Rhythm\",\"knobs\":[\"rhy_mode\",\"rhy_ab\",\"rhy_style\"],\"params"
-    "\":[{\"key\":\"rhy_mode\",\"label\":\"Mode\"},{\"key\":\"rhy_ab\",\"label\":\"A/B\"},{\"key\":\"rhy_style\",\"label\":\"Styl"
-    "e\"}]},\"rev\":{\"name\":\"Reverb\",\"knobs\":[\"rev_decay\",\"rev_tone\",\"rev_hpf\",\"rev_level\"],\"params\":[{\"key\""
-    ":\"rev_decay\",\"label\":\"Decay\"},{\"key\":\"rev_tone\",\"label\":\"Tone\"},{\"key\":\"rev_hpf\",\"label\":\"HPF\"},{\"ke"
-    "y\":\"rev_level\",\"label\":\"Level\"}]},\"dly\":{\"name\":\"Delay\",\"knobs\":[\"dly_time\",\"dly_fdbk\",\"dly_tone\",\"d"
-    "ly_hpf\",\"dly_level\"],\"params\":[{\"key\":\"dly_time\",\"label\":\"Time\"},{\"key\":\"dly_fdbk\",\"label\":\"Fdbk\"},{"
-    "\"key\":\"dly_tone\",\"label\":\"Tone\"},{\"key\":\"dly_hpf\",\"label\":\"HPF\"},{\"key\":\"dly_level\",\"label\":\"Level\"}"
-    "]},\"root\":{\"name\":\"CW-78\",\"knobs\":[\"master_dist\",\"master_drive\",\"comp\",\"volume\",\"vel_depth\",\"hat_cho"
-    "ke\"],\"params\":[{\"level\":\"bd\",\"label\":\"Bass Drum\"},{\"level\":\"sd\",\"label\":\"Snare\"},{\"level\":\"rs\",\"labe"
-    "l\":\"Rim Shot\"},{\"level\":\"hh\",\"label\":\"Hi-Hat\"},{\"level\":\"cy\",\"label\":\"Cymbal\"},{\"level\":\"ma\",\"label\""
-    ":\"Maracas\"},{\"level\":\"cl\",\"label\":\"Claves\"},{\"level\":\"hb\",\"label\":\"Hi Bongo\"},{\"level\":\"lb\",\"label\":"
-    "\"Low Bongo\"},{\"level\":\"lc\",\"label\":\"Low Conga\"},{\"level\":\"cb\",\"label\":\"Cowbell\"},{\"level\":\"tb\",\"labe"
-    "l\":\"Tambourine\"},{\"level\":\"gu\",\"label\":\"Guiro\"},{\"level\":\"mb\",\"label\":\"Metal Beat\"},{\"level\":\"rhy\",\""
-    "label\":\"Rhythm\"},{\"level\":\"rev\",\"label\":\"Reverb\"},{\"level\":\"dly\",\"label\":\"Delay\"},{\"key\":\"master_dis"
-    "t\",\"label\":\"Master Dist\"},{\"key\":\"master_drive\",\"label\":\"Master Drive\"},{\"key\":\"comp\",\"label\":\"Comp\""
-    "},{\"key\":\"volume\",\"label\":\"Volume\"},{\"key\":\"vel_depth\",\"label\":\"Velocity\"},{\"key\":\"note_map\",\"label\""
-    ":\"Note Map\"},{\"key\":\"hat_choke\",\"label\":\"Choke\"}]}}}";
+    "\":\"mb_dly\",\"label\":\"Dly\"}]},\"rhy\":{\"name\":\"Rhythm\",\"knobs\":[\"rhy_mode\",\"rhy_ab\",\"rhy_style\",\"rhy_sty"
+    "le2\"],\"params\":[{\"key\":\"rhy_mode\",\"label\":\"Mode\"},{\"key\":\"rhy_ab\",\"label\":\"A/B\"},{\"key\":\"rhy_style\","
+    "\"label\":\"Rhythm 1\"},{\"key\":\"rhy_style2\",\"label\":\"Rhythm 2\"}]},\"rev\":{\"name\":\"Reverb\",\"knobs\":[\"rev_d"
+    "ecay\",\"rev_tone\",\"rev_hpf\",\"rev_level\"],\"params\":[{\"key\":\"rev_decay\",\"label\":\"Decay\"},{\"key\":\"rev_to"
+    "ne\",\"label\":\"Tone\"},{\"key\":\"rev_hpf\",\"label\":\"HPF\"},{\"key\":\"rev_level\",\"label\":\"Level\"}]},\"dly\":{\"na"
+    "me\":\"Delay\",\"knobs\":[\"dly_time\",\"dly_fdbk\",\"dly_tone\",\"dly_hpf\",\"dly_level\"],\"params\":[{\"key\":\"dly_t"
+    "ime\",\"label\":\"Time\"},{\"key\":\"dly_fdbk\",\"label\":\"Fdbk\"},{\"key\":\"dly_tone\",\"label\":\"Tone\"},{\"key\":\"dly"
+    "_hpf\",\"label\":\"HPF\"},{\"key\":\"dly_level\",\"label\":\"Level\"}]},\"root\":{\"name\":\"CW-78\",\"knobs\":[\"master_d"
+    "ist\",\"master_drive\",\"comp\",\"volume\",\"vel_depth\",\"hat_choke\"],\"params\":[{\"level\":\"bd\",\"label\":\"Bass D"
+    "rum\"},{\"level\":\"sd\",\"label\":\"Snare\"},{\"level\":\"rs\",\"label\":\"Rim Shot\"},{\"level\":\"hh\",\"label\":\"Hi-Hat"
+    "\"},{\"level\":\"cy\",\"label\":\"Cymbal\"},{\"level\":\"ma\",\"label\":\"Maracas\"},{\"level\":\"cl\",\"label\":\"Claves\"},"
+    "{\"level\":\"hb\",\"label\":\"Hi Bongo\"},{\"level\":\"lb\",\"label\":\"Low Bongo\"},{\"level\":\"lc\",\"label\":\"Low Cong"
+    "a\"},{\"level\":\"cb\",\"label\":\"Cowbell\"},{\"level\":\"tb\",\"label\":\"Tambourine\"},{\"level\":\"gu\",\"label\":\"Guir"
+    "o\"},{\"level\":\"mb\",\"label\":\"Metal Beat\"},{\"level\":\"rhy\",\"label\":\"Rhythm\"},{\"level\":\"rev\",\"label\":\"Rev"
+    "erb\"},{\"level\":\"dly\",\"label\":\"Delay\"},{\"key\":\"master_dist\",\"label\":\"Master Dist\"},{\"key\":\"master_dri"
+    "ve\",\"label\":\"Master Drive\"},{\"key\":\"comp\",\"label\":\"Comp\"},{\"key\":\"volume\",\"label\":\"Volume\"},{\"key\":\""
+    "vel_depth\",\"label\":\"Velocity\"},{\"key\":\"note_map\",\"label\":\"Note Map\"},{\"key\":\"hat_choke\",\"label\":\"Cho"
+    "ke\"}]}}}";
 
 #endif /* CR78_PARAMS_H */

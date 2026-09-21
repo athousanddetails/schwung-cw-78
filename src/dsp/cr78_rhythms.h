@@ -93,6 +93,31 @@ typedef struct {
     const unsigned char *bAcc; int bAccN;
 } cr78_rhythm_t;
 
+/* Return the voices fired by one rhythm at an absolute hardware tick. A bit
+ * mask is the circuit-faithful representation: combining selector buttons
+ * ORs trigger lines, so the same voice present in both rhythms fires once,
+ * never twice. Accent is also a shared control line and therefore ORs. */
+static inline unsigned cr78_rhythm_step_mask(const cr78_rhythm_t *r,
+                                              int measure, int tick,
+                                              int *accented)
+{
+    if(!r || r->stepsPerBar <= 0) return 0u;
+    int step = tick % r->stepsPerBar;
+    if(step < 0) step += r->stepsPerBar;
+    const cr78_hit_t *hits = measure ? r->b : r->a;
+    const int n = measure ? r->bN : r->aN;
+    const unsigned char *acc = measure ? r->bAcc : r->aAcc;
+    const int accN = measure ? r->bAccN : r->aAccN;
+    unsigned mask = 0u;
+    for(int i = 0; i < n; ++i)
+        if((int)hits[i].step == step)
+            mask |= 1u << hits[i].voice;
+    if(accented)
+        for(int i = 0; i < accN; ++i)
+            if((int)acc[i] == step) { *accented = 1; break; }
+    return mask;
+}
+
 /* ---- BALLROOM ---------------------------------------------------------- */
 
 /* WALTZ. 3/4, so 36 steps. Cymbal on 1 and 3, bass drum on 1, a bongo

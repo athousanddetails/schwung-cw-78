@@ -856,6 +856,13 @@ void cr78_deserialize(cr78_engine_t *e, const char *json)
         if(v >= g_cr78_enums[i].count) v = g_cr78_enums[i].count - 1;
         e->env[i] = v;
     }
+    /* v1.5 appended Rhythm 2 to the enum table. A v1.4 preset has no value
+     * for that tail slot; loading it after a combination must restore the
+     * old behavior (one rhythm), rather than inherit the currently latched
+     * second button from the instance. Other omitted fields retain the
+     * existing partial-state behavior. */
+    const int rhy2 = find_enum("rhy_style2");
+    if(rhy2 >= 0 && got <= rhy2) e->env[rhy2] = g_cr78_enums[rhy2].def;
     cr78_fx_sync(e);
 
     const char *mp = strstr(json, "\"mutes\"");

@@ -303,10 +303,13 @@ PAGES = [
 # ---- the preset rhythms ----------------------------------------------------
 #
 # The CR-78's own patterns, transcribed from pages 27-28 of the service notes.
-# Three controls, exactly as the hardware splits them:
+# Four controls: the hardware controls plus a second selector that exposes its
+# simultaneous-button rhythm combinations on Move's parameter page:
 #
-#   Style   which BUTTON, not which pattern. Seventeen of them, exactly the
-#           seventeen on the panel.
+#   Rhythm 1  the first BUTTON, not a flattened pattern list. Seventeen of
+#             them, exactly the seventeen on the panel.
+#   Rhythm 2  Off or a second button. Off is the append-only default, so old
+#             patches and the uncombined sound remain exactly as shipped.
 #   A / B   the RHYTHM lever, and it does what the hardware's does.
 #
 # THE LEVER IS NOT A MEASURE SELECTOR, and getting that wrong is easy. Three
@@ -343,7 +346,8 @@ RHYTHM_PAGES = [
         # ballroom ends and the rock begins.
         E("rhy_mode",  "Mode",  ["Off", "Play"], 0),
         E("rhy_ab",    "A/B",   ["A", "B"], 0),
-        E("rhy_style", "Style", RHY_STYLES, 11),    # Rock 1
+        E("rhy_style",  "Rhythm 1", RHY_STYLES, 11),    # Rock 1
+        E("rhy_style2", "Rhythm 2", ["Off"] + RHY_STYLES, 0),
     ]),
 ]
 

@@ -50,13 +50,20 @@ service notes, on the machine's own grid — the document states it outright:
 48 steps to the measure, which is 12 to the beat, so sixteenths and triplets
 both land exactly. That is why one clock plays a shuffle and a disco pattern.
 
-Three controls on the **Rhythm** page:
+Four controls on the **Rhythm** page:
 
 | | |
 |---|---|
 | **Mode** | Off / Play. Off is the default. The rhythm plays **only while Move's transport runs** and stops with it |
 | **A / B** | The RHYTHM lever, live on all seventeen buttons — which is where Roland's **"34 preset rhythms"** figure comes from: 17 × 2. On single-label caps it picks the style's A or B variation; on the three dual caps it picks which style plays |
-| **Style** | Which **button** — seventeen, exactly the seventeen on the panel: Waltz, Shuffle, Slow Rock, Swing, A-Fox Trot/B-Tango, Boogie, Enka, Bossa Nova, Samba, A-Mambo/B-Cha Cha, A-Beguine/B-Rhumba, Rock 1–4, Disco 1–2 |
+| **Rhythm 1** | The first **button** — seventeen, exactly the seventeen on the panel: Waltz, Shuffle, Slow Rock, Swing, A-Fox Trot/B-Tango, Boogie, Enka, Bossa Nova, Samba, A-Mambo/B-Cha Cha, A-Beguine/B-Rhumba, Rock 1–4, Disco 1–2 |
+| **Rhythm 2** | Off by default. Select a second button to combine both rhythms as on the hardware. Shared hits fire once; either Accent pulse accents the combined step |
+
+On the remote panel, click one rhythm button and then another to latch both.
+Click either selected button to lift it, or press **CANCEL** to stop and clear
+the combination. The Move pads remain the fourteen individual drum voices;
+pattern selection lives on the Rhythm page because the pad block has no spare
+pattern bank.
 
 ## Send FX
 

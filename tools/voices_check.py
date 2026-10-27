@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Copyright (C) 2026 A Thousand Details. GPL-3.0 with additional terms: see NOTICE.
 """voices_check — Schwung 0.13's voices contract, asserted against the header.
 
 Reads the two ui_pages blobs straight out of src/dsp/cr78_params.h and the

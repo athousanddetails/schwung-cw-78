@@ -1,3 +1,4 @@
+/* Copyright (C) 2026 A Thousand Details. GPL-3.0 with additional terms: see NOTICE. */
 /*
  * knob_check — every control must actually DO something.
  *

@@ -1,3 +1,4 @@
+/* Copyright (C) 2026 A Thousand Details. GPL-3.0 with additional terms: see NOTICE. */
 /*
  * cr78_shape.h — the post-voice drive stage.
  *

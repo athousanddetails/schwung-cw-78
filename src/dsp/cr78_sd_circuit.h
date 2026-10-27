@@ -1,3 +1,4 @@
+/* Copyright (C) 2026 A Thousand Details. GPL-3.0 with additional terms: see NOTICE. */
 /*
  * cr78_sd_circuit.h — the snare drum, both halves of it.
  *

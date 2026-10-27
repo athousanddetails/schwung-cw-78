@@ -1,0 +1,30 @@
+CW-78
+Copyright (C) 2026 A Thousand Details
+https://github.com/athousanddetails/schwung-cw-78
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License version 3 as published by the Free
+Software Foundation (see LICENSE), with the additional terms below.
+
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+ADDITIONAL TERMS (GNU GPL version 3, section 7)
+
+These terms apply to every copy of this program, and to every work based on
+it, that you convey in source or object form: the module, a fork, a port to
+another platform or plugin format, or any product that contains this code.
+
+1. Attribution (section 7(b)). Keep this author attribution, unaltered:
+
+       CW-78 by A Thousand Details - https://github.com/athousanddetails/schwung-cw-78
+
+   It must appear in the source, in the documentation, and in the
+   Appropriate Legal Notices of the work: wherever the work, or the product
+   that contains it, displays credits, an "about" screen, an author field or
+   legal notices. Do not remove the copyright notices in the source files.
+
+2. Origin (section 7(c)). A modified version must be marked as changed, in
+   the same places as the attribution, and must not be presented as the
+   original or as made or endorsed by A Thousand Details.

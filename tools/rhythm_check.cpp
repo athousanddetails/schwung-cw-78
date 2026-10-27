@@ -1,3 +1,4 @@
+/* Copyright (C) 2026 A Thousand Details. GPL-3.0 with additional terms: see NOTICE. */
 /*
  * rhythm_check — the preset rhythm bank, checked and rendered.
  *

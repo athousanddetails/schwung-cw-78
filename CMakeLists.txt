@@ -1,3 +1,4 @@
+# Copyright (C) 2026 A Thousand Details. GPL-3.0 with additional terms: see NOTICE.
 cmake_minimum_required(VERSION 3.15)
 project(schwung-cw78 VERSION 0.1.0 LANGUAGES C CXX)
 

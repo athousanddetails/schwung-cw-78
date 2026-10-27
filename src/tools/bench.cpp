@@ -1,3 +1,4 @@
+/* Copyright (C) 2026 A Thousand Details. GPL-3.0 with additional terms: see NOTICE. */
 /*
  * bench.cpp — the CPU gate. Cross-compiled and run ON the Move.
  *

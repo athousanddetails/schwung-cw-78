@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Copyright (C) 2026 A Thousand Details. GPL-3.0 with additional terms: see NOTICE.
 #
 # Everything that can be checked without a Move plugged in.
 #

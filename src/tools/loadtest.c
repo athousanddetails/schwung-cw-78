@@ -1,3 +1,4 @@
+/* Copyright (C) 2026 A Thousand Details. GPL-3.0 with additional terms: see NOTICE. */
 /*
  * loadtest.c — dlopen the REAL dsp.so, exactly as Schwung's chain host does.
  *

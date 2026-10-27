@@ -1,3 +1,4 @@
+/* Copyright (C) 2026 A Thousand Details. GPL-3.0 with additional terms: see NOTICE. */
 /*
  * cr78_circuit.h — the blocks the CR-78's voice circuits share.
  *

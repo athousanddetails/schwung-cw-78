@@ -1,3 +1,4 @@
+/* Copyright (C) 2026 A Thousand Details. GPL-3.0 with additional terms: see NOTICE. */
 /*
  * pad_probe — what does each pad actually produce, through the real dsp.so,
  * on the device, with the host's own API?

@@ -297,6 +297,19 @@
         "36-49 (default) or",
         "General MIDI."
       ]
+    },
+    {
+      "title": "About",
+      "lines": [
+        "CW-78 v1.5.2",
+        "(C) 2026",
+        "A Thousand Details",
+        "",
+        "GPL-3.0 + credit",
+        "terms: see NOTICE",
+        "github.com/",
+        "athousanddetails"
+      ]
     }
   ]
 }

@@ -1,3 +1,4 @@
+/* Copyright (C) 2026 A Thousand Details. GPL-3.0 with additional terms: see NOTICE. */
 /*
  * cr78_noise_circuit.h — the gated-noise voices: hi-hat, cymbal, maracas.
  *

@@ -1,3 +1,4 @@
+/* Copyright (C) 2026 A Thousand Details. GPL-3.0 with additional terms: see NOTICE. */
 /*
  * cr78_plugin.cpp — Schwung plugin_api_v2 wrapper for the CW-78 engine.
  *
